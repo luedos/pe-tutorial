@@ -1,10 +1,10 @@
 [includedirs]
-C:/.conan/_pd8_dw3/1/include
+C:/.conan/0xrgr8z6/1/include
 C:/Users/luedos/.conan/data/bzip2/1.0.6/conan/stable/package/6cc50b139b9c3d27b3e9042d5f5372d327b3a9f7/include
 C:/Users/luedos/.conan/data/zlib/1.2.11/conan/stable/package/6cc50b139b9c3d27b3e9042d5f5372d327b3a9f7/include
 
 [libdirs]
-C:/.conan/_pd8_dw3/1/lib
+C:/.conan/0xrgr8z6/1/lib
 C:/Users/luedos/.conan/data/bzip2/1.0.6/conan/stable/package/6cc50b139b9c3d27b3e9042d5f5372d327b3a9f7/lib
 C:/Users/luedos/.conan/data/zlib/1.2.11/conan/stable/package/6cc50b139b9c3d27b3e9042d5f5372d327b3a9f7/lib
 
@@ -15,7 +15,7 @@ C:/Users/luedos/.conan/data/bzip2/1.0.6/conan/stable/package/6cc50b139b9c3d27b3e
 
 
 [builddirs]
-C:/.conan/_pd8_dw3/1/
+C:/.conan/0xrgr8z6/1/
 C:/Users/luedos/.conan/data/bzip2/1.0.6/conan/stable/package/6cc50b139b9c3d27b3e9042d5f5372d327b3a9f7/
 C:/Users/luedos/.conan/data/zlib/1.2.11/conan/stable/package/6cc50b139b9c3d27b3e9042d5f5372d327b3a9f7/
 
@@ -80,10 +80,10 @@ BOOST_ALL_NO_LIB
 
 
 [includedirs_boost]
-C:/.conan/_pd8_dw3/1/include
+C:/.conan/0xrgr8z6/1/include
 
 [libdirs_boost]
-C:/.conan/_pd8_dw3/1/lib
+C:/.conan/0xrgr8z6/1/lib
 
 [bindirs_boost]
 
@@ -92,7 +92,7 @@ C:/.conan/_pd8_dw3/1/lib
 
 
 [builddirs_boost]
-C:/.conan/_pd8_dw3/1/
+C:/.conan/0xrgr8z6/1/
 
 [libs_boost]
 boost_wave
@@ -152,7 +152,7 @@ BOOST_ALL_NO_LIB
 
 
 [rootpath_boost]
-C:/.conan/_pd8_dw3/1
+C:/.conan/0xrgr8z6/1
 
 
 [includedirs_bzip2]
@@ -239,6 +239,6 @@ C:/Users/luedos/.conan/data/zlib/1.2.11/conan/stable/package/6cc50b139b9c3d27b3e
 [USER_bzip2]
 [USER_zlib]
 [ENV_boost]
-BOOST_ROOT=C:\.conan\_pd8_dw3\1
+BOOST_ROOT=C:\.conan\0xrgr8z6\1
 [ENV_bzip2]
 [ENV_zlib]
