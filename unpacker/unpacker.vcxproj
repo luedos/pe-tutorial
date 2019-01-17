@@ -93,13 +93,16 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)lzo\include\;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
-      <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.h"</Command>
+      <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)$(ProjectName)\unpacker.h"</Command>
     </PostBuildEvent>
     <Link>
       <SubSystem>Windows</SubSystem>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <FunctionOrder>LinkingOrder.txt</FunctionOrder>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -108,13 +111,16 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)lzo\include\;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
-      <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.h"</Command>
+      <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)$(ProjectName)\unpacker.h"</Command>
     </PostBuildEvent>
     <Link>
       <SubSystem>Windows</SubSystem>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <FunctionOrder>LinkingOrder.txt</FunctionOrder>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -122,13 +128,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MinSpace</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)lzo\include\;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -137,9 +144,12 @@
       <AssemblyDebug>false</AssemblyDebug>
       <EntryPointSymbol>unpacker_main</EntryPointSymbol>
       <SubSystem>Windows</SubSystem>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <FunctionOrder>LinkingOrder.txt</FunctionOrder>
     </Link>
     <PostBuildEvent>
-      <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.h"</Command>
+      <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)$(ProjectName)\unpacker.h"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -147,13 +157,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MinSpace</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)lzo\include\;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -162,16 +173,49 @@
       <AssemblyDebug>false</AssemblyDebug>
       <EntryPointSymbol>unpacker_main</EntryPointSymbol>
       <SubSystem>Windows</SubSystem>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <FunctionOrder>LinkingOrder.txt</FunctionOrder>
     </Link>
     <PostBuildEvent>
-      <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.h"</Command>
+      <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)$(ProjectName)\unpacker.h"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="lzo_files\lzo1z_d1.c" />
+    <ClCompile Include="memcpy.c" />
+    <ClCompile Include="memset.c" />
     <ClCompile Include="Unpacker.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="lzo_files\compr1b.h" />
+    <ClInclude Include="lzo_files\compr1c.h" />
+    <ClInclude Include="lzo_files\config1.h" />
+    <ClInclude Include="lzo_files\config1a.h" />
+    <ClInclude Include="lzo_files\config1b.h" />
+    <ClInclude Include="lzo_files\config1c.h" />
+    <ClInclude Include="lzo_files\config1f.h" />
+    <ClInclude Include="lzo_files\config1x.h" />
+    <ClInclude Include="lzo_files\config1y.h" />
+    <ClInclude Include="lzo_files\config1z.h" />
+    <ClInclude Include="lzo_files\config2a.h" />
+    <ClInclude Include="lzo_files\lzo1a_de.h" />
+    <ClInclude Include="lzo_files\lzo1b_cc.h" />
+    <ClInclude Include="lzo_files\lzo1b_de.h" />
+    <ClInclude Include="lzo_files\lzo1c_cc.h" />
+    <ClInclude Include="lzo_files\lzo_conf.h" />
+    <ClInclude Include="lzo_files\lzo_dict.h" />
+    <ClInclude Include="lzo_files\lzo_func.h" />
+    <ClInclude Include="lzo_files\lzo_ptr.h" />
+    <ClInclude Include="lzo_files\lzo_supp.h" />
+    <ClInclude Include="lzo_files\stats1a.h" />
+    <ClInclude Include="lzo_files\stats1b.h" />
+    <ClInclude Include="lzo_files\stats1c.h" />
     <ClInclude Include="Parameters.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="lzo_files\lzo1x_d.ch" />
+    <None Include="lzo_files\lzo1_d.ch" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

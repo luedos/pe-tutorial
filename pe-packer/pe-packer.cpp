@@ -3,7 +3,7 @@
 #include "Structs.h"
 #include "unpacker/Parameters.h"
 
-#include "unpacker.h"
+#include "unpacker/unpacker.h"
 
 inline
 size_t Align_down(size_t x, size_t align)
@@ -86,6 +86,15 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	packed_file_info basic_info = { 0 };
 
 	basic_info.number_of_sections = sections.size();
+
+	basic_info.original_import_directory_rva = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_IMPORT);
+	basic_info.original_import_directory_size = image->get_directory_size(IMAGE_DIRECTORY_ENTRY_IMPORT);
+
+	basic_info.original_entry_point = image->get_ep();
+
+	basic_info.total_virtual_size_of_sections = image->get_size_of_image();
+
+
 
 	std::string packed_sections_info;
 	{

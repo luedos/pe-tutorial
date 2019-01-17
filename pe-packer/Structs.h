@@ -18,6 +18,11 @@ struct packed_file_info
 	DWORD size_of_packed_data;
 	DWORD size_of_unpacked_data;
 
+	DWORD total_virtual_size_of_sections;
+	DWORD original_import_directory_rva;
+	DWORD original_import_directory_size;
+	DWORD original_entry_point;
+
 	DWORD load_library_a;
 	DWORD get_proc_address;
 	DWORD end_of_import_address_table;
