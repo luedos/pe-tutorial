@@ -26,6 +26,17 @@ struct packed_file_info
 	DWORD original_resource_directory_rva; //Относительный адрес оригинальной директории ресурсов
 	DWORD original_resource_directory_size; //Размер оригинальной директории ресурсов
 
+	//Сюда загрузчик будет записывать TLS-индекс
+	DWORD tls_index;
+	//Относительный адрес индекса TLS в оригинальном файле
+	DWORD original_tls_index_rva;
+	//Оригинальный адрес массива TLS-коллбэков в оригинальном файле
+	DWORD original_rva_of_tls_callbacks;
+	//Относительный адрес массива TLS-коллбэков в файле
+	//после нашей модификации
+	DWORD new_rva_of_tls_callbacks;
+
+
 	DWORD load_library_a;
 	DWORD get_proc_address;
 	DWORD end_of_import_address_table;

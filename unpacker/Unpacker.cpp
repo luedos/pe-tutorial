@@ -13,6 +13,10 @@ void __declspec(naked) unpacker_main()
 {
 	__asm
 	{
+		jmp next;
+		ret 0xC;
+	next:
+
 		push ebp;
 		mov ebp, esp;
 		sub esp, 256;
@@ -110,35 +114,38 @@ void __declspec(naked) unpacker_main()
 
 
 
-	//Относительный виртуальный адрес директории импорта
-	DWORD original_import_directory_rva;
-	//Виртуальный размер директории импорта
-	DWORD original_import_directory_size;
-	//Оригинальная точка входа
-	DWORD original_entry_point;
-	//Общий размер всех секций файла
-	DWORD total_virtual_size_of_sections;
-	//Количество секций в оригинальном файле
-	BYTE number_of_sections;
+	////Относительный виртуальный адрес директории импорта
+	//DWORD original_import_directory_rva;
+	////Виртуальный размер директории импорта
+	//DWORD original_import_directory_size;
+	////Оригинальная точка входа
+	//DWORD original_entry_point;
+	////Общий размер всех секций файла
+	//DWORD total_virtual_size_of_sections;
+	////Количество секций в оригинальном файле
+	//BYTE number_of_sections;
+	//
+	//
+	//DWORD original_resource_directory_rva;
+	////Виртуальный размер директории ресурсов
+	//DWORD original_resource_directory_size;
+	//
+	//
+	////Копируем эти значения из структуры packed_file_info,
+	////которую для нас записал упаковщик
+	//original_import_directory_rva = info->original_import_directory_rva;
+	//original_import_directory_size = info->original_import_directory_size;
+	//original_entry_point = info->original_entry_point;
+	//total_virtual_size_of_sections = info->total_virtual_size_of_sections;
+	//number_of_sections = info->number_of_sections;
+	//
+	//original_resource_directory_rva = info->original_resource_directory_rva;
+	//original_resource_directory_size = info->original_resource_directory_size;
 
-
-	DWORD original_resource_directory_rva;
-	//Виртуальный размер директории ресурсов
-	DWORD original_resource_directory_size;
-
-
-	//Копируем эти значения из структуры packed_file_info,
-	//которую для нас записал упаковщик
-	original_import_directory_rva = info->original_import_directory_rva;
-	original_import_directory_size = info->original_import_directory_size;
-	original_entry_point = info->original_entry_point;
-	total_virtual_size_of_sections = info->total_virtual_size_of_sections;
-	number_of_sections = info->number_of_sections;
-
-	original_resource_directory_rva = info->original_resource_directory_rva;
-	original_resource_directory_size = info->original_resource_directory_size;
-
-
+	//Копируем все поля структуры packed_file_info, так как они нам будут
+  //нужны далее, но структуру по указателю info мы скоро затрем
+	packed_file_info info_copy;
+	memcpy(&info_copy, info, sizeof(info_copy));
 
 
 	//Указатель на память, в которую
@@ -187,19 +194,19 @@ void __declspec(naked) unpacker_main()
 	memset(
 		reinterpret_cast<void*>(original_image_base + rva_of_first_section),
 		0,
-		total_virtual_size_of_sections - rva_of_first_section);
+		info_copy.total_virtual_size_of_sections - rva_of_first_section);
 
 	//Изменим атрибуты блока памяти, в котором
 	//расположены заголовки PE-файла и секций
 	//Нам необходим доступ на запись
 	DWORD old_protect;
 	virtual_protect(reinterpret_cast<LPVOID>(offset_to_section_headers),
-		number_of_sections * sizeof(IMAGE_SECTION_HEADER),
+		info_copy.number_of_sections * sizeof(IMAGE_SECTION_HEADER),
 		PAGE_READWRITE, &old_protect);
 
 	//Теперь изменим количество секций
 	//в заголовке PE-файла на оригинальное
-	file_header->NumberOfSections = number_of_sections;
+	file_header->NumberOfSections = info_copy.number_of_sections;
 
 
 
@@ -209,7 +216,7 @@ void __declspec(naked) unpacker_main()
 	DWORD current_section_structure_pos;
 	current_section_structure_pos = offset_to_section_headers;
 	//Перечислим все секции
-	for (int i = 0; i != number_of_sections; ++i)
+	for (int i = 0; i != info_copy.number_of_sections; ++i)
 	{
 		//Создаем структуру заголовка секции
 		IMAGE_SECTION_HEADER section_header;
@@ -248,7 +255,7 @@ void __declspec(naked) unpacker_main()
 	//Восстановим указатель на заголовки секций
 	current_section_structure_pos = offset_to_section_headers;
 	//Снова перечисляем все секции
-	for (int i = 0; i != number_of_sections; ++i)
+	for (int i = 0; i != info_copy.number_of_sections; ++i)
 	{
 		//Заголовок секции, который мы только что сами записали
 		const IMAGE_SECTION_HEADER* section_header = reinterpret_cast<const IMAGE_SECTION_HEADER*>(current_section_structure_pos);
@@ -256,7 +263,7 @@ void __declspec(naked) unpacker_main()
 		//Копируем данные секции в то место памяти,
 		//где они должны располагаться
 		memcpy(reinterpret_cast<void*>(original_image_base + section_header->VirtualAddress),
-			reinterpret_cast<char*>(unpacked_mem) + number_of_sections * sizeof(packed_section) + current_raw_data_ptr,
+			reinterpret_cast<char*>(unpacked_mem) + info_copy.number_of_sections * sizeof(packed_section) + current_raw_data_ptr,
 			section_header->SizeOfRawData);
 
 		//Перемещаем указатель на данные секции
@@ -283,24 +290,24 @@ void __declspec(naked) unpacker_main()
 	IMAGE_DATA_DIRECTORY* import_dir;
 	import_dir = reinterpret_cast<IMAGE_DATA_DIRECTORY*>(offset_to_directories + sizeof(IMAGE_DATA_DIRECTORY) * IMAGE_DIRECTORY_ENTRY_IMPORT);
 	//Записываем значения размера и виртуального адреса в соответствующие поля
-	import_dir->Size = original_import_directory_size;
-	import_dir->VirtualAddress = original_import_directory_rva;
+	import_dir->Size = info_copy.original_import_directory_size;
+	import_dir->VirtualAddress = info_copy.original_import_directory_rva;
 
 
 	//Указатель на директорию ресурсов
 	IMAGE_DATA_DIRECTORY* resource_dir;
 	resource_dir = reinterpret_cast<IMAGE_DATA_DIRECTORY*>(offset_to_directories + sizeof(IMAGE_DATA_DIRECTORY) * IMAGE_DIRECTORY_ENTRY_RESOURCE);
 	//Записываем значения размера и виртуального адреса в соответствующие поля
-	resource_dir->Size = original_resource_directory_size;
-	resource_dir->VirtualAddress = original_resource_directory_rva;
+	resource_dir->Size = info_copy.original_resource_directory_size;
+	resource_dir->VirtualAddress = info_copy.original_resource_directory_rva;
 
 
 
-	if (original_import_directory_rva)
+	if (info_copy.original_import_directory_rva)
 	{
 		//Виртуальный адрес первого дескриптора
 		IMAGE_IMPORT_DESCRIPTOR* descr;
-		descr = reinterpret_cast<IMAGE_IMPORT_DESCRIPTOR*>(original_import_directory_rva + original_image_base);
+		descr = reinterpret_cast<IMAGE_IMPORT_DESCRIPTOR*>(info_copy.original_import_directory_rva + original_image_base);
 
 		//Перечисляем все дескрипторы
 		//Последний - нулевой
@@ -342,14 +349,65 @@ void __declspec(naked) unpacker_main()
 
 
 
+
+
+	//Скопируем TLS-индекс
+	if (info_copy.original_tls_index_rva)
+		*reinterpret_cast<DWORD*>(info_copy.original_tls_index_rva + original_image_base) = info_copy.tls_index;
+
+	if (info_copy.original_rva_of_tls_callbacks)
+	{
+		//Если TLS имеет коллбэки
+		PIMAGE_TLS_CALLBACK* tls_callback_address;
+		//Указатель на первый коллбэк оригинального массива
+		tls_callback_address = reinterpret_cast<PIMAGE_TLS_CALLBACK*>(info_copy.original_rva_of_tls_callbacks + original_image_base);
+		//Смещение относительно начала оригинального массива TLS-коллбэков
+		DWORD offset = 0;
+
+		while (true)
+		{
+			//Если коллбэк нулевой - это конец массива
+			if (!*tls_callback_address)
+				break;
+
+			//Скопируем в наш массив коллбэков
+			//адрес оригинального
+			*reinterpret_cast<PIMAGE_TLS_CALLBACK*>(info_copy.new_rva_of_tls_callbacks + original_image_base + offset) = *tls_callback_address;
+
+			//Перейдем к следующему коллбэку
+			++tls_callback_address;
+			offset += sizeof(DWORD);
+		}
+
+		//Вернемся на начало уже нового массива
+		tls_callback_address = reinterpret_cast<PIMAGE_TLS_CALLBACK*>(info_copy.new_rva_of_tls_callbacks + original_image_base);
+		while (true)
+		{
+			//Если коллбэк нулевой - это конец массива
+			if (!*tls_callback_address)
+				break;
+
+			//Вызовем коллбэк
+			(*tls_callback_address)(reinterpret_cast<PVOID>(original_image_base), DLL_PROCESS_ATTACH, 0);
+
+			//Перейдем к следующему коллбэку
+			++tls_callback_address;
+		}
+	}
+
+
+
+
+
+
 	//Вернем атрибуты памяти заголовков, как было изначально
-	virtual_protect(reinterpret_cast<LPVOID>(offset_to_section_headers), number_of_sections * sizeof(IMAGE_SECTION_HEADER), old_protect, &old_protect);
+	virtual_protect(reinterpret_cast<LPVOID>(offset_to_section_headers), info_copy.number_of_sections * sizeof(IMAGE_SECTION_HEADER), old_protect, &old_protect);
 
 	//Эпилог вручную
 	_asm
 	{
 		//Переходим на оригинальную точку входа
-		mov eax, original_entry_point;
+		mov eax, info_copy.original_entry_point;
 		add eax, original_image_base;
 		leave;
 		//Вот так

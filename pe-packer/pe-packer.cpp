@@ -199,6 +199,14 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 
 	std::cout << "Compressing succeed\n";
 
+	//Если файл имеет TLS, получим информацию о нем
+	std::auto_ptr<pe_bliss::tls_info> tls;
+	if (image->has_tls())
+	{
+		std::cout << "Reading TLS..." << std::endl;
+		tls.reset(new pe_bliss::tls_info(pe_bliss::get_tls_info(*image)));
+	}
+
 
 	//Удалим все часто используемые директории
 	//В дальнейшем мы будем их возвращать обратно
@@ -211,13 +219,12 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_IAT);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_SECURITY);
-	image->remove_directory(IMAGE_DIRECTORY_ENTRY_TLS);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_DEBUG);
 
 	//Урезаем таблицу директорий, удаляя все нулевые
 	//Урезаем не полностью, а минимум до 12 элементов, так как в оригинальном
 	//файле могут присутствовать первые 12 и использоваться
-	image->strip_data_directories(16 - 4);
+	//image->strip_data_directories(16 - 4);
 	//Удаляем стаб из заголовка, если какой-то был
 	image->strip_stub_overlay();
 
@@ -399,6 +406,30 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		
 		
 
+		//Если у файла был TLS
+		if (tls.get())
+		{
+			//Указатель на нашу структуру с информацией
+			//для распаковщика
+			//Эта структура в самом начале свежедобавленной секции,
+			//мы ее туда добавили чуть раньше
+			packed_file_info* info = reinterpret_cast<packed_file_info*>(&added_section.get_raw_data()[0]);
+
+			//Запишем относительный виртуальный адрес
+			//оригинального TLS
+			info->original_tls_index_rva = tls->get_index_rva();
+
+			//Если у нас были TLS-коллбэки, запишем в структуру
+			//относительный виртуальный адрес их массива в оригинальном файле
+			if (!tls->get_tls_callbacks().empty())
+				info->original_rva_of_tls_callbacks = tls->get_callbacks_rva();
+
+			//Теперь относительный виртуальный адрес индекса TLS
+			//будет другим - мы заставим загрузчик записать его в поле tls_index
+			//структуры packed_file_info
+			tls->set_index_rva(image->rva_from_section_offset(added_section, offsetof(packed_file_info, tls_index)));
+		}
+
 	}
 
 	{
@@ -406,7 +437,7 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 
 		unpacker_section.set_name(".packed");
 
-		unpacker_section.readable(true).executable(true);
+		unpacker_section.readable(true).executable(true).writeable(true);
 
 		{
 			//Получаем ссылку на данные секции распаковщика
@@ -426,10 +457,103 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		}
 
 		//Добавляем и эту секцию
-		const pe_bliss::section& unpacker_added_section = image->add_section(unpacker_section);
+		pe_bliss::section& unpacker_added_section = image->add_section(unpacker_section);
 		//Выставляем новую точку входа - теперь она указывает
 		//на распаковщик, на самое его начало
 		image->set_ep(image->rva_from_section_offset(unpacker_added_section, 0) + unpacker_entry_point);
+	
+
+		//Если у файла есть TLS
+		if (tls.get())
+		{
+			std::cout << "Rebuilding TLS..." << std::endl;
+
+			//Ссылка на сырые данные секции распаковщика
+			//Сейчас там есть только тело распаковщика
+			std::string& data = unpacker_added_section.get_raw_data();
+
+			//Изменим размер данных секции распаковщика ровно
+			//по количеству байтов в теле распаковщика
+			//(на случай, если нулевые байты с конца были обрезаны
+			//библиотекой для работы с PE)
+			data.resize(sizeof(unpacker_data));
+
+			//Вычислим позицию, в которую запишем структуру IMAGE_TLS_DIRECTORY32
+			DWORD directory_pos = data.size();
+			//Выделим место под эту структуру
+			//запас sizeof(DWORD) нужен для выравнивания, так как
+			//IMAGE_TLS_DIRECTORY32 должна быть выровнена 4-байтовую на границу
+			data.resize(data.size() + sizeof(IMAGE_TLS_DIRECTORY32) + sizeof(DWORD));
+
+			//Если у TLS есть коллбэки...
+			if (!tls->get_tls_callbacks().empty())
+			{
+				//Необходимо зарезервировать место
+				//под оригинальные TLS-коллбэки
+				//Плюс 1 ячейка под нулевой DWORD
+				DWORD first_callback_offset = data.size();
+				data.resize(data.size() + sizeof(DWORD) * (tls->get_tls_callbacks().size() + 1));
+
+				//Первый коллбэк будет нашим пустым (ret 0xC),
+				//запишем его адрес
+				*reinterpret_cast<DWORD*>(&data[first_callback_offset]) =
+					image->rva_to_va_32(image->rva_from_section_offset(unpacker_added_section, unpacker_entry_point + empty_tls_callback_offset));
+
+				//Запишем относительный виртуальный адрес
+				//новой таблицы TLS-коллбэков
+				tls->set_callbacks_rva(image->rva_from_section_offset(unpacker_added_section, first_callback_offset));
+
+				//Теперь запишем в структуру packed_file_info, которую мы
+				//записали в самое начало первой секции,
+				//относительный адрес новой таблицы коллбэков
+				reinterpret_cast<packed_file_info*>(&image->get_image_sections().at(0).get_raw_data()[0])->new_rva_of_tls_callbacks = tls->get_callbacks_rva();
+			}
+			else
+			{
+				//Если нет коллбэков, на всякий случай обнулим адрес
+				tls->set_callbacks_rva(0);
+			}
+
+			//Очистим массив коллбэков, они нам больше не нужны
+			//Мы их сделали вручную
+			tls->clear_tls_callbacks();
+
+			//Установим новый относительный адрес
+			//данных для инициализации локальной памяти потока
+			tls->set_raw_data_start_rva(image->rva_from_section_offset(unpacker_added_section, data.size()));
+			//Пересчитываем адрес конца этих данных
+			tls->recalc_raw_data_end_rva();
+
+			//Пересобираем TLS
+			//Указываем пересборщику, что не нужно писать данные и коллбэки
+			//Мы сделаем это вручную (коллбэки уже записали, куда надо)
+			//Также указываем, что не нужно обрезать нулевые байты в конце секции
+			pe_bliss::rebuild_tls(*image,*tls, unpacker_added_section, directory_pos, false, false, pe_bliss::tls_data_expand_raw, true, false);
+
+			//Дополняем секцию данными для инициализации
+			//локальной памяти потока
+			unpacker_added_section.get_raw_data() += tls->get_raw_data();
+			//Теперь установим виртуальный размер секции "kaimi.io"
+			//с учетом SizeOfZeroFill поля TLS
+			image->set_section_virtual_size(unpacker_added_section, data.size() + tls->get_size_of_zero_fill());
+			//Наконец, обрежем уже ненужные нулевые байты с конца секции
+
+
+			std::string& unpacker_added_section_data = unpacker_added_section.get_raw_data();
+			//Удаляем нулевые байты в конце этой секции,
+			//которые компилятор добавил для выравнивания
+			int i;
+			for (i = unpacker_added_section_data.size() - 1; i >= 0 && unpacker_added_section_data[i] == '\0'; --i)
+			{
+			}
+			if (i != unpacker_added_section_data.size())
+				unpacker_added_section_data.erase(i + 1);
+
+			//и пересчитаем ее размеры (физический и виртуальный)
+			image->prepare_section(unpacker_added_section);
+		}
+
+
 	}
 
 
