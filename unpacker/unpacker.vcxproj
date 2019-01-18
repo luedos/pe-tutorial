@@ -122,13 +122,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MinSpace</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)lzo\include\;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -138,6 +139,8 @@
       <EntryPointSymbol>unpacker_main</EntryPointSymbol>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
       <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)$(ProjectName)\unpacker.h"</Command>
@@ -148,13 +151,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MinSpace</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)lzo\include\;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -163,15 +167,43 @@
       <AssemblyDebug>false</AssemblyDebug>
       <EntryPointSymbol>unpacker_main</EntryPointSymbol>
       <SubSystem>Windows</SubSystem>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
       <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.h"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="lzo-files\lzo1z_d1.c" />
+    <ClCompile Include="memcpy.c" />
+    <ClCompile Include="memset.c" />
     <ClCompile Include="Unpacker.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="lzo-files\compr1b.h" />
+    <ClInclude Include="lzo-files\compr1c.h" />
+    <ClInclude Include="lzo-files\config1.h" />
+    <ClInclude Include="lzo-files\config1a.h" />
+    <ClInclude Include="lzo-files\config1b.h" />
+    <ClInclude Include="lzo-files\config1c.h" />
+    <ClInclude Include="lzo-files\config1f.h" />
+    <ClInclude Include="lzo-files\config1x.h" />
+    <ClInclude Include="lzo-files\config1y.h" />
+    <ClInclude Include="lzo-files\config1z.h" />
+    <ClInclude Include="lzo-files\config2a.h" />
+    <ClInclude Include="lzo-files\lzo1a_de.h" />
+    <ClInclude Include="lzo-files\lzo1b_cc.h" />
+    <ClInclude Include="lzo-files\lzo1b_de.h" />
+    <ClInclude Include="lzo-files\lzo1c_cc.h" />
+    <ClInclude Include="lzo-files\lzo_conf.h" />
+    <ClInclude Include="lzo-files\lzo_dict.h" />
+    <ClInclude Include="lzo-files\lzo_func.h" />
+    <ClInclude Include="lzo-files\lzo_ptr.h" />
+    <ClInclude Include="lzo-files\lzo_supp.h" />
+    <ClInclude Include="lzo-files\stats1a.h" />
+    <ClInclude Include="lzo-files\stats1b.h" />
+    <ClInclude Include="lzo-files\stats1c.h" />
     <ClInclude Include="Parameters.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

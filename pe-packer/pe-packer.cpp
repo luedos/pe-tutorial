@@ -87,6 +87,18 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 
 	basic_info.number_of_sections = sections.size();
 
+
+	//Запоминаем относительный адрес и размер
+	//оригинальной таблицы импорта упаковываемого файла
+	basic_info.original_import_directory_rva = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_IMPORT);
+	basic_info.original_import_directory_size = image->get_directory_size(IMAGE_DIRECTORY_ENTRY_IMPORT);
+	//Запоминаем его точку входа
+	basic_info.original_entry_point = image->get_ep();
+	//Запоминаем общий виртуальный размер всех секций
+	//упаковываемого файла
+	basic_info.total_virtual_size_of_sections = image->get_size_of_image();
+
+
 	std::string packed_sections_info;
 	{
 		packed_sections_info.resize(sections.size() * sizeof(packed_section));
@@ -290,7 +302,7 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		const pe_bliss::section& unpacker_added_section = image->add_section(unpacker_section);
 		//Выставляем новую точку входа - теперь она указывает
 		//на распаковщик, на самое его начало
-		image->set_ep(image->rva_from_section_offset(unpacker_added_section, 0));
+		image->set_ep(image->rva_from_section_offset(unpacker_added_section, 0) + unpacker_entry_point);
 	}
 
 

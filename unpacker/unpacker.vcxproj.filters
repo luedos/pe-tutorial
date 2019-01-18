@@ -18,9 +18,87 @@
     <ClInclude Include="Parameters.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="lzo-files\compr1b.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\compr1c.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\config1.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\config1a.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\config1b.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\config1c.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\config1f.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\config1x.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\config1y.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\config1z.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\config2a.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\lzo_conf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\lzo_dict.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\lzo_func.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\lzo_ptr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\lzo_supp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\lzo1a_de.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\lzo1b_cc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\lzo1b_de.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\lzo1c_cc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\stats1a.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\stats1b.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzo-files\stats1c.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Unpacker.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lzo-files\lzo1z_d1.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="memcpy.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="memset.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

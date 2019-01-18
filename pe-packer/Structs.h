@@ -18,6 +18,11 @@ struct packed_file_info
 	DWORD size_of_packed_data;
 	DWORD size_of_unpacked_data;
 
+	DWORD total_virtual_size_of_sections; //Полный виртуальный размер всех секций оригинального файла
+	DWORD original_import_directory_rva; //Относительный адрес оригинальной таблицы импорта
+	DWORD original_import_directory_size; //Размер оригинальной таблицы импорта
+	DWORD original_entry_point; //Оригинальная точка входа
+
 	DWORD load_library_a;
 	DWORD get_proc_address;
 	DWORD end_of_import_address_table;
