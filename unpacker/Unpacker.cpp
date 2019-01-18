@@ -121,6 +121,12 @@ void __declspec(naked) unpacker_main()
 	//Количество секций в оригинальном файле
 	BYTE number_of_sections;
 
+
+	DWORD original_resource_directory_rva;
+	//Виртуальный размер директории ресурсов
+	DWORD original_resource_directory_size;
+
+
 	//Копируем эти значения из структуры packed_file_info,
 	//которую для нас записал упаковщик
 	original_import_directory_rva = info->original_import_directory_rva;
@@ -128,6 +134,10 @@ void __declspec(naked) unpacker_main()
 	original_entry_point = info->original_entry_point;
 	total_virtual_size_of_sections = info->total_virtual_size_of_sections;
 	number_of_sections = info->number_of_sections;
+
+	original_resource_directory_rva = info->original_resource_directory_rva;
+	original_resource_directory_size = info->original_resource_directory_size;
+
 
 
 
@@ -276,6 +286,13 @@ void __declspec(naked) unpacker_main()
 	import_dir->Size = original_import_directory_size;
 	import_dir->VirtualAddress = original_import_directory_rva;
 
+
+	//Указатель на директорию ресурсов
+	IMAGE_DATA_DIRECTORY* resource_dir;
+	resource_dir = reinterpret_cast<IMAGE_DATA_DIRECTORY*>(offset_to_directories + sizeof(IMAGE_DATA_DIRECTORY) * IMAGE_DIRECTORY_ENTRY_RESOURCE);
+	//Записываем значения размера и виртуального адреса в соответствующие поля
+	resource_dir->Size = original_resource_directory_size;
+	resource_dir->VirtualAddress = original_resource_directory_rva;
 
 
 

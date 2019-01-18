@@ -99,6 +99,13 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	basic_info.total_virtual_size_of_sections = image->get_size_of_image();
 
 
+	//Запоминаем относительный адрес и размер
+	//оригинальной директории ресурсов упаковываемого файла
+	basic_info.original_resource_directory_rva = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_RESOURCE);
+	basic_info.original_resource_directory_size = image->get_directory_size(IMAGE_DIRECTORY_ENTRY_RESOURCE);
+
+
+
 	std::string packed_sections_info;
 	{
 		packed_sections_info.resize(sections.size() * sizeof(packed_section));
@@ -203,7 +210,6 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_EXPORT);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_IAT);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG);
-	image->remove_directory(IMAGE_DIRECTORY_ENTRY_RESOURCE);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_SECURITY);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_TLS);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_DEBUG);
@@ -214,6 +220,115 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	image->strip_data_directories(16 - 4);
 	//Удаляем стаб из заголовка, если какой-то был
 	image->strip_stub_overlay();
+
+
+
+
+
+	//Новая пустая корневая директория ресурсов
+	pe_bliss::resource_directory new_root_dir;
+
+
+	if (image->has_resources())
+	{
+		std::cout << "Repacking resources..." << std::endl;
+
+		//Получим ресурсы исходного файла (корневую директорию)
+		pe_bliss::resource_directory root_dir = pe_bliss::get_resources(*image);
+
+		//Оборачиваем оригинальную и новую директорию ресурсов
+		//во вспомогательные классы
+		pe_bliss::pe_resource_viewer res(root_dir);
+		pe_bliss::pe_resource_manager new_res(new_root_dir);
+
+		try
+		{
+			//Перечислим все именованные группы иконок
+			//и группы иконок, имеющие ID
+			pe_bliss::pe_resource_viewer::resource_id_list icon_id_list(res.list_resource_ids(pe_bliss::pe_resource_viewer::resource_icon_group));
+			pe_bliss::pe_resource_viewer::resource_name_list icon_name_list(res.list_resource_names(pe_bliss::pe_resource_viewer::resource_icon_group));
+			//Сначала всегда располагаются именованные ресурсы, поэтому проверим, есть ли они
+			if (!icon_name_list.empty())
+			{
+				//Получим самую первую иконку для самого первого языка (по индексу 0)
+				//Если надо было бы перечислить языки для заданной иконки, можно было вызвать list_resource_languages
+				//Если надо было бы получить иконку для конкретного языка, можно было вызвать get_icon_by_name (перегрузка с указанием языка)
+				//Добавим группу иконок в новую директорию ресурсов
+				
+				new_res.add_resource(
+					res.get_resource_data_by_name(pe_bliss::pe_resource_viewer::resource_icon,icon_name_list[0]).get_data(),
+					pe_bliss::pe_resource_viewer::resource_icon,
+					icon_name_list[0], 
+					res.list_resource_languages(pe_bliss::pe_resource_viewer::resource_icon_group, icon_name_list[0]).at(0));
+			}
+			else if (!icon_id_list.empty()) //Если нет именованных групп иконок, но есть группы с ID
+			{
+				//Получим самую первую иконку для самого первого языка (по индексу 0)
+				//Если надо было бы перечислить языки для заданной иконки, можно было вызвать list_resource_languages
+				//Если надо было бы получить иконку для конкретного языка, можно было вызвать get_icon_by_id_lang
+				//Добавим группу иконок в новую директорию ресурсов
+				new_res.add_resource(
+					res.get_resource_data_by_id(pe_bliss::pe_resource_viewer::resource_icon, icon_id_list[0]).get_data(),
+					pe_bliss::pe_resource_viewer::resource_icon,
+					icon_id_list[0],
+					res.list_resource_languages(pe_bliss::pe_resource_viewer::resource_icon_group, icon_id_list[0]).at(0));
+			
+			}
+		}
+		catch (const pe_bliss::pe_exception&)
+		{
+			//Если какая-то ошибка с ресурсами, например, иконок нет,
+			//то ничего не делаем
+		}
+
+		try
+		{
+			//Получим список манифестов, имеющих ID
+			pe_bliss::pe_resource_viewer::resource_id_list manifest_id_list(res.list_resource_ids(pe_bliss::pe_resource_viewer::resource_manifest));
+			if (!manifest_id_list.empty()) //Если манифест есть
+			{
+				//Получим самый первый манифест для самого первого языка (по индексу 0)
+				//Добавим манифест в новую директорию ресурсов
+				new_res.add_resource(
+					res.get_resource_data_by_id(pe_bliss::pe_resource_viewer::resource_manifest, manifest_id_list[0]).get_data(),
+					pe_bliss::pe_resource_viewer::resource_manifest,
+					manifest_id_list[0],
+					res.list_resource_languages(pe_bliss::pe_resource_viewer::resource_manifest, manifest_id_list[0]).at(0)
+				);
+			}
+		}
+		catch (const pe_bliss::pe_exception&)
+		{
+			//Если какая-то ошибка с ресурсами,
+			//то ничего не делаем
+		}
+
+		try
+		{
+			//Получим список структур информаций о версии, имеющих ID
+			pe_bliss::pe_resource_viewer::resource_id_list version_info_id_list(res.list_resource_ids(pe_bliss::pe_resource_viewer::resource_version));
+			if (!version_info_id_list.empty()) //Если информация о версии есть
+			{
+				//Получим самую первую структуру информации о версии для самого первого языка (по индексу 0)
+				//Добавим информацию о версии в новую директорию ресурсов
+				new_res.add_resource(
+					res.get_resource_data_by_id(pe_bliss::pe_resource_viewer::resource_version, version_info_id_list[0]).get_data(),
+					pe_bliss::pe_resource_viewer::resource_version,
+					version_info_id_list[0],
+					res.list_resource_languages(pe_bliss::pe_resource_viewer::resource_version, version_info_id_list[0]).at(0)
+				);
+			}
+		}
+		catch (const pe_bliss::pe_exception&)
+		{
+			//Если какая-то ошибка с ресурсами,
+			//то ничего не делаем
+		}
+	}
+
+
+
+
 
 
 	{
@@ -228,7 +343,7 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 			+ Align_up(last_section.get_virtual_size(), image->get_section_alignment())
 			- first_section.get_virtual_address();
 
-		
+
 		image->get_image_sections().clear();
 
 		image->realign_file(0x200);
@@ -250,7 +365,7 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		func.set_name("GetProcAddress");
 		kernel32.add_import(func);
 
-		DWORD load_library_address_rva = 
+		DWORD load_library_address_rva =
 			image->rva_from_section_offset(added_section, offsetof(packed_file_info, load_library_a));
 
 
@@ -262,15 +377,27 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		imports.push_back(kernel32);
 
 		pe_bliss::import_rebuilder_settings settings;
-		
+
 		settings.build_original_iat(false);
-		
+
 		settings.save_iat_and_original_iat_rvas(true, true);
-		
+
 		settings.set_offset_from_section_start(added_section.get_raw_data().size());
+
+		//Если у нас есть ресурсы для сборки,
+		//отключим автоматическое урезание секции после
+		//добавления в нее импортов
+		if (!new_root_dir.get_entry_list().empty())
+			settings.enable_auto_strip_last_section(false);
+
 
 		pe_bliss::rebuild_imports(*image, imports, added_section, settings);
 
+		//Пересоберем ресурсы, если есть, что пересобирать
+		if (!new_root_dir.get_entry_list().empty())
+			pe_bliss::rebuild_resources(*image, new_root_dir, added_section, added_section.get_raw_data().size());
+		
+		
 
 	}
 

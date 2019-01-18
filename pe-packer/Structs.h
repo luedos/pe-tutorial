@@ -23,6 +23,9 @@ struct packed_file_info
 	DWORD original_import_directory_size; //Размер оригинальной таблицы импорта
 	DWORD original_entry_point; //Оригинальная точка входа
 
+	DWORD original_resource_directory_rva; //Относительный адрес оригинальной директории ресурсов
+	DWORD original_resource_directory_size; //Размер оригинальной директории ресурсов
+
 	DWORD load_library_a;
 	DWORD get_proc_address;
 	DWORD end_of_import_address_table;
