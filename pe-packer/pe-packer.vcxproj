@@ -197,6 +197,9 @@
       <AdditionalLibraryDirectories>$(SolutionDir)bin\lzo\$(Platform)\$(Configuration)\;$(SolutionDir)bin\pe_bliss\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>pe_bliss.lib;lzo.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>conan install $(SolutionDir)conan\</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDecompressor|Win32'">
     <ClCompile>

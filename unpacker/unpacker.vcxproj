@@ -137,9 +137,10 @@
       <AssemblyDebug>false</AssemblyDebug>
       <EntryPointSymbol>unpacker_main</EntryPointSymbol>
       <SubSystem>Windows</SubSystem>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
     </Link>
     <PostBuildEvent>
-      <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.h"</Command>
+      <Command>"$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker-converter.exe"    "$(SolutionDir)bin\$(ProjectName)\$(Platform)\$(Configuration)\unpacker.exe"    "$(SolutionDir)$(ProjectName)\unpacker.h"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

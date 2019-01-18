@@ -56,7 +56,11 @@ int main(int argc, char* argv[])
 		std::ofstream output_source(argv[2], std::ios::out | std::ios::trunc);
 
 		//Начинаем формировать исходный код
-		output_source << std::hex << "#pragma once" << std::endl << "unsigned char unpacker_data[] = {";
+		output_source  << "#pragma once\n";
+
+		output_source << "uint32_t unpacker_entry_point = "  << (image.get_ep() - unpacker_sections.at(0).get_virtual_address()) << ";\n";
+
+		output_source << std::hex << "unsigned char unpacker_data[] = {";
 		//Текущая длина считанных данных
 		unsigned long len = 0;
 		//Общая длина данных секции
