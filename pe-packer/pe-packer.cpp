@@ -211,6 +211,15 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		tls.reset(new pe_bliss::tls_info(pe_bliss::get_tls_info(*image)));
 	}
 
+	//Если файл имеет экспорты, получим информацию о них
+	//и их список
+	pe_bliss::exported_functions_list exports;
+	pe_bliss::export_info exports_info;
+	if (image->has_exports())
+	{
+		std::cout << "Reading exports..." << std::endl;
+		exports = pe_bliss::get_exported_functions(*image, exports_info);
+	}
 
 	//Удалим все часто используемые директории
 	//В дальнейшем мы будем их возвращать обратно
@@ -218,7 +227,6 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	//Оставим только импорты (и то, обрабатывать их пока не будем)
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT);
-	image->remove_directory(IMAGE_DIRECTORY_ENTRY_EXPORT);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_IAT);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_SECURITY);
@@ -465,6 +473,23 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 
 		//Добавляем и эту секцию
 		pe_bliss::section& unpacker_added_section = image->add_section(unpacker_section);
+
+
+
+		//Изменим размер данных секции распаковщика ровно
+		//по количеству байтов в теле распаковщика
+		//(на случай, если нулевые байты с конца были обрезаны
+		//библиотекой для работы с PE)
+		if (tls.get() || image->has_exports() || image->has_reloc())
+		{
+			//Изменим размер данных секции распаковщика ровно
+			//по количеству байтов в теле распаковщика
+			//(на случай, если нулевые байты с конца были обрезаны
+			//библиотекой для работы с PE)
+			unpacker_added_section.get_raw_data().resize(sizeof(unpacker_data));
+		}
+
+
 		//Выставляем новую точку входа - теперь она указывает
 		//на распаковщик, на самое его начало
 		image->set_ep(image->rva_from_section_offset(unpacker_added_section, 0) + unpacker_entry_point);
@@ -526,7 +551,18 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 
 			//Пересобираем релокации, располагая их в конце
 			//секции с кодом распаковщика
-			pe_bliss::rebuild_relocations(*image, reloc_tables, unpacker_section, unpacker_section.get_raw_data().size());
+			pe_bliss::rebuild_relocations(*image, reloc_tables, unpacker_section, unpacker_section.get_raw_data().size(), true, !image->has_exports());
+	
+		}
+
+		if (image->has_exports())
+		{
+			std::cout << "Repacking exports..." << std::endl;
+
+			pe_bliss::section& unpacker_section = image->get_image_sections().at(1);
+
+			//Пересобираем экспорты и располагаем их в секции "kaimi.io"
+			pe_bliss::rebuild_exports(*image, exports_info, exports, unpacker_section, unpacker_section.get_raw_data().size());
 		}
 
 
@@ -538,12 +574,6 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 			//Ссылка на сырые данные секции распаковщика
 			//Сейчас там есть только тело распаковщика
 			std::string& data = unpacker_added_section.get_raw_data();
-
-			//Изменим размер данных секции распаковщика ровно
-			//по количеству байтов в теле распаковщика
-			//(на случай, если нулевые байты с конца были обрезаны
-			//библиотекой для работы с PE)
-			data.resize(sizeof(unpacker_data));
 
 			//Вычислим позицию, в которую запишем структуру IMAGE_TLS_DIRECTORY32
 			DWORD directory_pos = data.size();
@@ -608,7 +638,7 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 			//Наконец, обрежем уже ненужные нулевые байты с конца секции
 
 
-			if (!image->has_reloc())
+			if (!image->has_reloc() && !image->has_exports())
 			{
 				std::string& unpacker_added_section_data = unpacker_added_section.get_raw_data();
 				//Удаляем нулевые байты в конце этой секции,

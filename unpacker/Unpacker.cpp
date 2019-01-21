@@ -40,14 +40,62 @@ void __declspec(naked) unpacker_main()
 		mov original_image_base, 0x11111111;
 		mov rva_of_first_section, 0x22222222;
 		mov original_image_base_no_fixup, 0x33333333;
+
 	}
 
+	//Адрес переменной, говорящей о том,
+	//был ли код уже распакован
+	DWORD* was_unpacked;
+
+	__asm
+	{
+		//Хитрость с получением адреса
+		//следующей за call инструкции
+		call next2;
+		add byte ptr[eax], al;
+		add byte ptr[eax], al;
+	next2:
+		//В eax - адрес первой инструкции
+		//add byte ptr [eax], al
+		pop eax;
+
+		//Сохраним этот адрес
+		mov was_unpacked, eax;
+
+		//Посмотрим, что по нему лежит
+		mov eax, [eax];
+
+		//Если там ноль, то перейдем
+		//на распаковщик
+		test eax, eax;
+		jz next3;
+
+		//Если не ноль, то завершим распаковщик
+		//и перейдем на оригинальную точку входа
+		leave;
+		jmp eax;
+
+	next3:
+	}
 	//Получаем указатель на структуру с информацией,
 	//которую для нас заботливо приготовил упаковщик
 	const packed_file_info* info;
 	//Она находится в самом начале
 	//первой секции упакованного файла
 	info = reinterpret_cast<const packed_file_info*>(original_image_base + rva_of_first_section);
+
+	//Получим адрес оригинальной точки входа
+	DWORD original_ep;
+	original_ep = info->original_entry_point + original_image_base;
+
+	__asm
+	{
+		//Запишем его по адресу, содержащемуся в переменной
+		//was_unpacked
+		mov edx, was_unpacked;
+		mov eax, original_ep;
+		mov[edx], eax;
+	}
 
 	//Два тайпдефа прототипов функций LoadLibraryA и GetProcAddress
 	typedef HMODULE(__stdcall* load_library_a_func)(const char* library_name);
