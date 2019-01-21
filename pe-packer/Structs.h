@@ -40,6 +40,8 @@ struct packed_file_info
 	DWORD original_relocation_directory_rva; //Относительный адрес оригинальной директории релокаций
 	DWORD original_relocation_directory_size; //Размер оригинальной директории релокаций
 
+	DWORD original_load_config_directory_rva; //Относительный адрес оригинальной директории конфигурации загрузки
+	DWORD lock_opcode; //Фиктивный опкод команды ассемблера LOCK
 
 	DWORD load_library_a;
 	DWORD get_proc_address;

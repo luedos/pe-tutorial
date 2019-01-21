@@ -20,6 +20,10 @@ void __declspec(naked) unpacker_main()
 		push ebp;
 		mov ebp, esp;
 		sub esp, 2048;
+
+		mov eax, 0x11111111;
+		mov ecx, 0x22222222;
+		mov edx, 0x33333333;
 	}
 
 	//... описано далее ...//
@@ -37,9 +41,9 @@ void __declspec(naked) unpacker_main()
 	//заменить в билдере распаковщика адреса на реальные
 	__asm
 	{
-		mov original_image_base, 0x11111111;
-		mov rva_of_first_section, 0x22222222;
-		mov original_image_base_no_fixup, 0x33333333;
+		mov original_image_base, eax;
+		mov rva_of_first_section, ecx;
+		mov original_image_base_no_fixup, edx;
 
 	}
 
@@ -441,6 +445,37 @@ void __declspec(naked) unpacker_main()
 		}
 	}
 
+
+
+	//Если файл имеет директорию конфигурации загрузки
+	if (info_copy.original_load_config_directory_rva)
+	{
+		//Получим указатель на оригинальную директорию
+		//конфигурации загрузки
+		const IMAGE_LOAD_CONFIG_DIRECTORY32* cfg = reinterpret_cast<const IMAGE_LOAD_CONFIG_DIRECTORY32*>(info_copy.original_load_config_directory_rva + original_image_base);
+
+		//Если директория имеет таблицу LOCK-префиксов
+		//и загрузчик переписал наш подложный LOCK-опкод
+		//на опкод NOP (0x90) (т.е. система однопроцессорная)
+		if (cfg->LockPrefixTable && info_copy.lock_opcode == 0x90 /* NOP opcode */)
+		{
+			//Получаем указатель на первый элемент таблицы
+			//абсолютных адресов LOCK-префиксов
+			const DWORD* table_ptr = reinterpret_cast<const DWORD*>(cfg->LockPrefixTable);
+			//Перечисляем их
+			while (true)
+			{
+				//Указатель на LOCK-префикс
+				BYTE* lock_prefix_va = reinterpret_cast<BYTE*>(*table_ptr);
+
+				if (!lock_prefix_va)
+					break;
+
+				//Меняем его на NOP
+				*lock_prefix_va = 0x90;
+			}
+		}
+	}
 
 
 

@@ -87,6 +87,8 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 
 	basic_info.number_of_sections = sections.size();
 
+	//Опкод ассемблерной инструкции LOCK
+	basic_info.lock_opcode = 0xf0;
 
 	//Запоминаем относительный адрес и размер
 	//оригинальной таблицы импорта упаковываемого файла
@@ -108,6 +110,13 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	//оригинальной директории релокаций упаковываемого файла
 	basic_info.original_relocation_directory_rva = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_BASERELOC);
 	basic_info.original_relocation_directory_size = image->get_directory_size(IMAGE_DIRECTORY_ENTRY_BASERELOC);
+
+	//Запоминаем относительный адрес
+	//оригинальной директории конфигурации загрузки упаковываемого файла
+	basic_info.original_load_config_directory_rva = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG);
+
+
+
 
 
 	std::string packed_sections_info;
@@ -221,14 +230,28 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		exports = pe_bliss::get_exported_functions(*image, exports_info);
 	}
 
+	//Если файл имеет Image Load Config, получим информацию о ней
+	std::unique_ptr<pe_bliss::image_config_info> load_config;
+	if (image->has_config())
+	{
+		try
+		{
+			pe_bliss::image_config_info* info_ptr = new pe_bliss::image_config_info(pe_bliss::get_image_config(*image));
+
+			load_config.reset(info_ptr);
+		}
+		catch (const pe_bliss::pe_exception& e)
+		{
+			std::cout << "No config in PE..." << std::endl;
+		}
+	}
+
 	//Удалим все часто используемые директории
 	//В дальнейшем мы будем их возвращать обратно
 	//и корректно обрабатывать, но пока так
 	//Оставим только импорты (и то, обрабатывать их пока не будем)
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT);
-	image->remove_directory(IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_IAT);
-	image->remove_directory(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_SECURITY);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_DEBUG);
 
@@ -238,7 +261,6 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	//image->strip_data_directories(16 - 4);
 	//Удаляем стаб из заголовка, если какой-то был
 	image->strip_stub_overlay();
-
 
 
 
@@ -480,7 +502,7 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		//по количеству байтов в теле распаковщика
 		//(на случай, если нулевые байты с конца были обрезаны
 		//библиотекой для работы с PE)
-		if (tls.get() || image->has_exports() || image->has_reloc())
+		if (tls.get() || image->has_exports() || image->has_reloc() || load_config.get())
 		{
 			//Изменим размер данных секции распаковщика ровно
 			//по количеству байтов в теле распаковщика
@@ -551,8 +573,7 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 
 			//Пересобираем релокации, располагая их в конце
 			//секции с кодом распаковщика
-			pe_bliss::rebuild_relocations(*image, reloc_tables, unpacker_section, unpacker_section.get_raw_data().size(), true, !image->has_exports());
-	
+			pe_bliss::rebuild_relocations(*image, reloc_tables, unpacker_section, unpacker_section.get_raw_data().size(), true, !image->has_exports() && !load_config.get());
 		}
 
 		if (image->has_exports())
@@ -562,7 +583,23 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 			pe_bliss::section& unpacker_section = image->get_image_sections().at(1);
 
 			//Пересобираем экспорты и располагаем их в секции "kaimi.io"
-			pe_bliss::rebuild_exports(*image, exports_info, exports, unpacker_section, unpacker_section.get_raw_data().size());
+			pe_bliss::rebuild_exports(*image, exports_info, exports, unpacker_section, unpacker_section.get_raw_data().size(), true, !load_config.get());
+		}
+
+		if (load_config.get())
+		{
+			std::cout << "Repacking load configuration..." << std::endl;
+
+			pe_bliss::section& unpacker_section = image->get_image_sections().at(1);
+
+			//Очистим таблицу адресов LOCK-префиксов
+			load_config->clear_lock_prefix_list();
+			//Добавим единственный адрес нашего левого LOCK-префикса
+			load_config->add_lock_prefix_rva(image->rva_from_section_offset(image->get_image_sections().at(0), offsetof(packed_file_info, lock_opcode)));
+
+			//Пересобираем директорию конфигурации загрузки и располагаем ее в секции "kaimi.io"
+			//Пересобираем автоматически таблицу SE Handler'ов и LOCK-префиксов
+			pe_bliss::rebuild_image_config(*image, *load_config, unpacker_section, unpacker_section.get_raw_data().size(), true, true);
 		}
 
 
@@ -638,7 +675,7 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 			//Наконец, обрежем уже ненужные нулевые байты с конца секции
 
 
-			if (!image->has_reloc() && !image->has_exports())
+			if (!image->has_reloc() && !image->has_exports() && !load_config.get())
 			{
 				std::string& unpacker_added_section_data = unpacker_added_section.get_raw_data();
 				//Удаляем нулевые байты в конце этой секции,
