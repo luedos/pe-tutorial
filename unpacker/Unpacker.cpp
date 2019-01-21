@@ -19,7 +19,7 @@ void __declspec(naked) unpacker_main()
 
 		push ebp;
 		mov ebp, esp;
-		sub esp, 256;
+		sub esp, 2048;
 	}
 
 	//... описано далее ...//
@@ -31,12 +31,15 @@ void __declspec(naked) unpacker_main()
 	//распаковщика и сами упакованные данные
 	unsigned int rva_of_first_section;
 
+
+	unsigned int original_image_base_no_fixup;
 	//Эти инструкции нужны только для того, чтобы
 	//заменить в билдере распаковщика адреса на реальные
 	__asm
 	{
 		mov original_image_base, 0x11111111;
 		mov rva_of_first_section, 0x22222222;
+		mov original_image_base_no_fixup, 0x33333333;
 	}
 
 	//Получаем указатель на структуру с информацией,
@@ -347,6 +350,48 @@ void __declspec(naked) unpacker_main()
 		}
 	}
 
+
+
+
+
+	//Если у файла были релокации
+	//и файл был перемещен загрузчиком
+	if (info_copy.original_relocation_directory_rva
+		&& original_image_base_no_fixup != original_image_base)
+	{
+		//Указатель на первую структуру IMAGE_BASE_RELOCATION
+		const IMAGE_BASE_RELOCATION* reloc = reinterpret_cast<const IMAGE_BASE_RELOCATION*>(info_copy.original_relocation_directory_rva + original_image_base);
+
+		//Размер директории перемещаемых элементов (релокаций)
+		unsigned long reloc_size = info_copy.original_relocation_directory_size;
+		//Количество обработанных байтов в директории
+		unsigned long read_size = 0;
+
+		//Перечисляем таблицы перемещаемых элементов
+		while (reloc->SizeOfBlock && read_size < reloc_size)
+		{
+			//Перечисляем все элементы в таблице
+			for (unsigned long i = sizeof(IMAGE_BASE_RELOCATION); i < reloc->SizeOfBlock; i += sizeof(WORD))
+			{
+				//Значение перемещаемого элемента
+				WORD elem = *reinterpret_cast<const WORD*>(reinterpret_cast<const char*>(reloc) + i);
+				//Если это релокация IMAGE_REL_BASED_HIGHLOW (других не бывает в PE x86)
+				if ((elem >> 12) == IMAGE_REL_BASED_HIGHLOW)
+				{
+					//Получаем DWORD по адресу релокации
+					DWORD* value = reinterpret_cast<DWORD*>(original_image_base + reloc->VirtualAddress + (elem & ((1 << 12) - 1)));
+					//Фиксим его, как PE-загрузчик
+					*value = *value - original_image_base_no_fixup + original_image_base;
+				}
+			}
+
+			//Просчитываем количество обработанных байтов
+			//в директории релокаций
+			read_size += reloc->SizeOfBlock;
+			//Переходим к следующей таблице релокаций
+			reloc = reinterpret_cast<const IMAGE_BASE_RELOCATION*>(reinterpret_cast<const char*>(reloc) + reloc->SizeOfBlock);
+		}
+	}
 
 
 

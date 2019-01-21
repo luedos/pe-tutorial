@@ -8,6 +8,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pe-packer", "pe-packer\pe-p
 		{1B01C23A-5ABC-4540-8E05-D3D8EE100316} = {1B01C23A-5ABC-4540-8E05-D3D8EE100316}
 		{1461F543-D1FA-4E4C-B6D7-0F879F566035} = {1461F543-D1FA-4E4C-B6D7-0F879F566035}
 		{FF85B0BD-D379-422A-B772-D8680B34A9E0} = {FF85B0BD-D379-422A-B772-D8680B34A9E0}
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2} = {ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pe_bliss", "pe_lib\pe_lib.vcxproj", "{1461F543-D1FA-4E4C-B6D7-0F879F566035}"
@@ -20,6 +21,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "unpacker", "unpacker\unpack
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "unpacker-converter", "unpucker-converter\unpucker-converter.vcxproj", "{692A0123-0E0D-4B13-9951-43B8E8356A0E}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "testing-sample", "testing-sample\testing-sample.vcxproj", "{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -91,6 +94,18 @@ Global
 		{692A0123-0E0D-4B13-9951-43B8E8356A0E}.ReleaseDecompressor|x64.Build.0 = Release|x64
 		{692A0123-0E0D-4B13-9951-43B8E8356A0E}.ReleaseDecompressor|x86.ActiveCfg = Release|Win32
 		{692A0123-0E0D-4B13-9951-43B8E8356A0E}.ReleaseDecompressor|x86.Build.0 = Release|Win32
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.Debug|x64.ActiveCfg = Debug|x64
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.Debug|x64.Build.0 = Debug|x64
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.Debug|x86.ActiveCfg = Debug|Win32
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.Debug|x86.Build.0 = Debug|Win32
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.Release|x64.ActiveCfg = Release|x64
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.Release|x64.Build.0 = Release|x64
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.Release|x86.ActiveCfg = Release|Win32
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.Release|x86.Build.0 = Release|Win32
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.ReleaseDecompressor|x64.ActiveCfg = Release|x64
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.ReleaseDecompressor|x64.Build.0 = Release|x64
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.ReleaseDecompressor|x86.ActiveCfg = Release|Win32
+		{ECD4D4D3-446C-42FD-B0D6-0792CAE852D2}.ReleaseDecompressor|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

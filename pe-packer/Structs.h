@@ -37,6 +37,10 @@ struct packed_file_info
 	DWORD new_rva_of_tls_callbacks;
 
 
+	DWORD original_relocation_directory_rva; //Относительный адрес оригинальной директории релокаций
+	DWORD original_relocation_directory_size; //Размер оригинальной директории релокаций
+
+
 	DWORD load_library_a;
 	DWORD get_proc_address;
 	DWORD end_of_import_address_table;

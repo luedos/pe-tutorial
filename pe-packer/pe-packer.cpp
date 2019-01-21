@@ -104,6 +104,10 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	basic_info.original_resource_directory_rva = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_RESOURCE);
 	basic_info.original_resource_directory_size = image->get_directory_size(IMAGE_DIRECTORY_ENTRY_RESOURCE);
 
+	//Запоминаем относительный адрес и размер
+	//оригинальной директории релокаций упаковываемого файла
+	basic_info.original_relocation_directory_rva = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_BASERELOC);
+	basic_info.original_relocation_directory_size = image->get_directory_size(IMAGE_DIRECTORY_ENTRY_BASERELOC);
 
 
 	std::string packed_sections_info;
@@ -212,7 +216,6 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	//В дальнейшем мы будем их возвращать обратно
 	//и корректно обрабатывать, но пока так
 	//Оставим только импорты (и то, обрабатывать их пока не будем)
-	image->remove_directory(IMAGE_DIRECTORY_ENTRY_BASERELOC);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT);
 	image->remove_directory(IMAGE_DIRECTORY_ENTRY_EXPORT);
@@ -433,6 +436,8 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	}
 
 	{
+		DWORD first_callback_offset = 0;
+
 		pe_bliss::section unpacker_section;
 
 		unpacker_section.set_name(".packed");
@@ -454,6 +459,8 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 			//В самом начале это секции, как вы помните, лежит
 			//структура packed_file_info
 			*reinterpret_cast<DWORD*>(&unpacker_section_data[rva_of_first_section_offset]) = image->get_image_sections().at(0).get_virtual_address();
+		
+			*reinterpret_cast<DWORD*>(&unpacker_section_data[original_image_base_no_fixup_offset]) = image->get_image_base_32();
 		}
 
 		//Добавляем и эту секцию
@@ -462,6 +469,66 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		//на распаковщик, на самое его начало
 		image->set_ep(image->rva_from_section_offset(unpacker_added_section, 0) + unpacker_entry_point);
 	
+
+		//Если у файла есть релокации
+		if (image->has_reloc())
+		{
+			std::cout << "Creating relocations..." << std::endl;
+
+			//Создаем список таблиц релокаций и единственную таблицу
+			pe_bliss::relocation_table_list reloc_tables;
+			pe_bliss::relocation_table table;
+
+			pe_bliss::section& unpacker_section = image->get_image_sections().at(1);
+
+			//Устанавливаем виртуальный адрес таблицы релокаций
+			//Он будет равен относительному виртуальному адресу второй добавленной
+			//секции, так как именно в ней находится код распаковщика
+			//с переменной, которую мы будем фиксить
+			table.set_rva(unpacker_section.get_virtual_address());
+
+			//Добавляем релокацию по смещению original_image_base_offset из
+			//файла parameters.h распаковщика
+			table.add_relocation(pe_bliss::relocation_entry(original_image_base_offset, IMAGE_REL_BASED_HIGHLOW));
+
+
+
+			//Если у файла был TLS
+			if (tls.get())
+			{
+				//Просчитаем смещение к структуре TLS
+				//относительно начала второй секции
+				DWORD tls_directory_offset = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_TLS)
+					- image->section_from_directory(IMAGE_DIRECTORY_ENTRY_TLS).get_virtual_address();
+
+				//Добавим релокации для полей StartAddressOfRawData,
+				//EndAddressOfRawData и AddressOfIndex
+				//Эти поля у нас всегда ненулевые
+				table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, StartAddressOfRawData)), IMAGE_REL_BASED_HIGHLOW));
+				table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, EndAddressOfRawData)), IMAGE_REL_BASED_HIGHLOW));
+				table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, AddressOfIndex)), IMAGE_REL_BASED_HIGHLOW));
+
+				//Если имеются TLS-коллбэки
+				if (first_callback_offset)
+				{
+					//То добавим еще релокации для поля AddressOfCallBacks
+					//и для адреса нашего пустого коллбэка
+					table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, AddressOfCallBacks)), IMAGE_REL_BASED_HIGHLOW));
+					table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(first_callback_offset), IMAGE_REL_BASED_HIGHLOW));
+				}
+			}
+
+
+
+
+			//Добавляем таблицу в список таблиц
+			reloc_tables.push_back(table);
+
+			//Пересобираем релокации, располагая их в конце
+			//секции с кодом распаковщика
+			pe_bliss::rebuild_relocations(*image, reloc_tables, unpacker_section, unpacker_section.get_raw_data().size());
+		}
+
 
 		//Если у файла есть TLS
 		if (tls.get())
@@ -485,13 +552,15 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 			//IMAGE_TLS_DIRECTORY32 должна быть выровнена 4-байтовую на границу
 			data.resize(data.size() + sizeof(IMAGE_TLS_DIRECTORY32) + sizeof(DWORD));
 
+
+
 			//Если у TLS есть коллбэки...
 			if (!tls->get_tls_callbacks().empty())
 			{
 				//Необходимо зарезервировать место
 				//под оригинальные TLS-коллбэки
 				//Плюс 1 ячейка под нулевой DWORD
-				DWORD first_callback_offset = data.size();
+				first_callback_offset = data.size();
 				data.resize(data.size() + sizeof(DWORD) * (tls->get_tls_callbacks().size() + 1));
 
 				//Первый коллбэк будет нашим пустым (ret 0xC),
@@ -539,16 +608,18 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 			//Наконец, обрежем уже ненужные нулевые байты с конца секции
 
 
-			std::string& unpacker_added_section_data = unpacker_added_section.get_raw_data();
-			//Удаляем нулевые байты в конце этой секции,
-			//которые компилятор добавил для выравнивания
-			int i;
-			for (i = unpacker_added_section_data.size() - 1; i >= 0 && unpacker_added_section_data[i] == '\0'; --i)
+			if (!image->has_reloc())
 			{
+				std::string& unpacker_added_section_data = unpacker_added_section.get_raw_data();
+				//Удаляем нулевые байты в конце этой секции,
+				//которые компилятор добавил для выравнивания
+				int i;
+				for (i = unpacker_added_section_data.size() - 1; i >= 0 && unpacker_added_section_data[i] == '\0'; --i)
+				{
+				}
+				if (i != unpacker_added_section_data.size())
+					unpacker_added_section_data.erase(i + 1);
 			}
-			if (i != unpacker_added_section_data.size())
-				unpacker_added_section_data.erase(i + 1);
-
 			//и пересчитаем ее размеры (физический и виртуальный)
 			image->prepare_section(unpacker_added_section);
 		}
