@@ -2,7 +2,6 @@
 #include <string.h>
 #include "pe_load_config.h"
 #include "pe_properties_generic.h"
-
 namespace pe_bliss
 {
 using namespace pe_win;
@@ -333,6 +332,7 @@ const image_directory rebuild_image_config(pe_base& pe, const image_config_info&
 }
 
 
+
 //Returns image config info
 //If image does not have config info, throws an exception
 template<typename PEClassType>
@@ -346,7 +346,7 @@ const image_config_info get_image_config_base(const pe_base& pe)
 	typename PEClassType::ConfigStruct config_info = pe.section_data_from_rva<typename PEClassType::ConfigStruct>(pe.get_directory_rva(image_directory_entry_load_config), section_data_virtual);
 
 	//Check size of config directory
-	if(config_info.Size != sizeof(config_info))
+	if(config_info.Size != (sizeof(config_info) - sizeof(config_info.Size)))
 		throw pe_exception("Incorrect (or old) load config directory", pe_exception::incorrect_config_directory);
 
 	//Fill return structure

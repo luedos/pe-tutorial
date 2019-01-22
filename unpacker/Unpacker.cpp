@@ -26,8 +26,10 @@ void __declspec(naked) unpacker_main()
 		mov edx, 0x33333333;
 	}
 
-	//... описано далее ...//
-
+	
+	// Geting variables
+	// "original_image_base", "rva_of_first_section", "original_image_base_no_fixup"
+#if true
 	//Адрес загрузки образа
 	unsigned int original_image_base;
 	//Относительный адрес первой секции,
@@ -46,7 +48,11 @@ void __declspec(naked) unpacker_main()
 		mov original_image_base_no_fixup, edx;
 
 	}
+#endif // Geting variables
 
+
+	// Check if allready unpacked
+#if true
 	//Адрес переменной, говорящей о том,
 	//был ли код уже распакован
 	DWORD* was_unpacked;
@@ -81,6 +87,11 @@ void __declspec(naked) unpacker_main()
 
 	next3:
 	}
+#endif // Check if allready unpacked
+
+
+	// Geting file info pointer
+#if true
 	//Получаем указатель на структуру с информацией,
 	//которую для нас заботливо приготовил упаковщик
 	const packed_file_info* info;
@@ -91,6 +102,8 @@ void __declspec(naked) unpacker_main()
 	//Получим адрес оригинальной точки входа
 	DWORD original_ep;
 	original_ep = info->original_entry_point + original_image_base;
+#endif // Geting file info
+
 
 	__asm
 	{
@@ -101,6 +114,10 @@ void __declspec(naked) unpacker_main()
 		mov[edx], eax;
 	}
 
+
+	// Geting functions 
+	// "LoadLibraryA", "GetProcAddress"
+#if true
 	//Два тайпдефа прототипов функций LoadLibraryA и GetProcAddress
 	typedef HMODULE(__stdcall* load_library_a_func)(const char* library_name);
 	typedef INT_PTR(__stdcall* get_proc_address_func)(HMODULE dll, const char* func_name);
@@ -111,15 +128,15 @@ void __declspec(naked) unpacker_main()
 	get_proc_address_func get_proc_address;
 	load_library_a = reinterpret_cast<load_library_a_func>(info->load_library_a);
 	get_proc_address = reinterpret_cast<get_proc_address_func>(info->get_proc_address);
+#endif // Geting functions
 
 
+	// Loading kernel and gering some functions
+	// "virtual_alloc", "virtual_protect", "virtual_free"
+#if true
 	//Создаем буфер на стеке
 	char buf[32];
 
-#define TEST_ false
-
-	// post code
-#if !TEST_
 	//kernel32.dll
 	*reinterpret_cast<DWORD*>(&buf[0]) = 'nrek';
 	*reinterpret_cast<DWORD*>(&buf[4]) = '23le';
@@ -166,45 +183,19 @@ void __declspec(naked) unpacker_main()
 	virtual_free_func virtual_free;
 	virtual_free = reinterpret_cast<virtual_free_func>(get_proc_address(kernel32_dll, buf));
 
+#endif // Loading kernel and gering some functions
 
 
-
-	////Относительный виртуальный адрес директории импорта
-	//DWORD original_import_directory_rva;
-	////Виртуальный размер директории импорта
-	//DWORD original_import_directory_size;
-	////Оригинальная точка входа
-	//DWORD original_entry_point;
-	////Общий размер всех секций файла
-	//DWORD total_virtual_size_of_sections;
-	////Количество секций в оригинальном файле
-	//BYTE number_of_sections;
-	//
-	//
-	//DWORD original_resource_directory_rva;
-	////Виртуальный размер директории ресурсов
-	//DWORD original_resource_directory_size;
-	//
-	//
-	////Копируем эти значения из структуры packed_file_info,
-	////которую для нас записал упаковщик
-	//original_import_directory_rva = info->original_import_directory_rva;
-	//original_import_directory_size = info->original_import_directory_size;
-	//original_entry_point = info->original_entry_point;
-	//total_virtual_size_of_sections = info->total_virtual_size_of_sections;
-	//number_of_sections = info->number_of_sections;
-	//
-	//original_resource_directory_rva = info->original_resource_directory_rva;
-	//original_resource_directory_size = info->original_resource_directory_size;
-
-	//Копируем все поля структуры packed_file_info, так как они нам будут
-  //нужны далее, но структуру по указателю info мы скоро затрем
+	// Copy file info into stack memory
 	packed_file_info info_copy;
 	memcpy(&info_copy, info, sizeof(info_copy));
 
 
+
+	// Unpacking data
+#if true 
 	//Указатель на память, в которую
-  //мы запишем распакованные данные
+	//мы запишем распакованные данные
 	LPVOID unpacked_mem;
 	//Выделяем память
 	unpacked_mem = virtual_alloc(
@@ -226,6 +217,9 @@ void __declspec(naked) unpacker_main()
 		&out_len,
 		0);
 
+#endif // Unpacking data
+
+
 
 	//Указатель на DOS-заголовок файла
 	const IMAGE_DOS_HEADER* dos_header;
@@ -244,8 +238,8 @@ void __declspec(naked) unpacker_main()
 
 
 	//Обнулим всю память первой секции
- //эта область соответствует области памяти, которую
- //в оригинальном файле занимают все секции
+	//эта область соответствует области памяти, которую
+	//в оригинальном файле занимают все секции
 	memset(
 		reinterpret_cast<void*>(original_image_base + rva_of_first_section),
 		0,
@@ -265,8 +259,8 @@ void __declspec(naked) unpacker_main()
 
 
 
-
-
+	// Rebuilding section headers
+#if true
 	//Виртуальный адрес структуры заголовка секции
 	DWORD current_section_structure_pos;
 	current_section_structure_pos = offset_to_section_headers;
@@ -298,13 +292,14 @@ void __declspec(naked) unpacker_main()
 		//Перемещаем указатель на следующий заголовок секции
 		current_section_structure_pos += sizeof(section_header);
 	}
+#endif // Rebuilding section headers
 
 
-
-
+	// Rebuilding sections
+#if true
 	//Указатель на сырые данные секции
-  //Необходим для разлепления сжатых данных секций
-  //и распихивания их по нужным местам
+	//Необходим для разлепления сжатых данных секций
+	//и распихивания их по нужным местам
 	DWORD current_raw_data_ptr;
 	current_raw_data_ptr = 0;
 	//Восстановим указатель на заголовки секций
@@ -332,15 +327,31 @@ void __declspec(naked) unpacker_main()
 	//Освобождаем память с распакованными данными,
 	//она нам больше не нужна
 	virtual_free(unpacked_mem, 0, MEM_RELEASE);
+#endif // Rebuilding sections
 
 
 
 	//Вычислим относительный виртуальный адрес
-  //начала таблицы директорий
+	//начала таблицы директорий
 	DWORD offset_to_directories;
 	offset_to_directories = original_image_base + dos_header->e_lfanew
 		+ sizeof(IMAGE_NT_HEADERS32) - sizeof(IMAGE_DATA_DIRECTORY) * IMAGE_NUMBEROF_DIRECTORY_ENTRIES;
 
+
+
+	// Fixing resources
+#if true
+		//Указатель на директорию ресурсов
+	IMAGE_DATA_DIRECTORY* resource_dir;
+	resource_dir = reinterpret_cast<IMAGE_DATA_DIRECTORY*>(offset_to_directories + sizeof(IMAGE_DATA_DIRECTORY) * IMAGE_DIRECTORY_ENTRY_RESOURCE);
+	//Записываем значения размера и виртуального адреса в соответствующие поля
+	resource_dir->Size = info_copy.original_resource_directory_size;
+	resource_dir->VirtualAddress = info_copy.original_resource_directory_rva;
+#endif // Fixing resources
+
+
+	// Fixing imports
+#if true
 	//Указатель на директорию импорта
 	IMAGE_DATA_DIRECTORY* import_dir;
 	import_dir = reinterpret_cast<IMAGE_DATA_DIRECTORY*>(offset_to_directories + sizeof(IMAGE_DATA_DIRECTORY) * IMAGE_DIRECTORY_ENTRY_IMPORT);
@@ -349,15 +360,8 @@ void __declspec(naked) unpacker_main()
 	import_dir->VirtualAddress = info_copy.original_import_directory_rva;
 
 
-	//Указатель на директорию ресурсов
-	IMAGE_DATA_DIRECTORY* resource_dir;
-	resource_dir = reinterpret_cast<IMAGE_DATA_DIRECTORY*>(offset_to_directories + sizeof(IMAGE_DATA_DIRECTORY) * IMAGE_DIRECTORY_ENTRY_RESOURCE);
-	//Записываем значения размера и виртуального адреса в соответствующие поля
-	resource_dir->Size = info_copy.original_resource_directory_size;
-	resource_dir->VirtualAddress = info_copy.original_resource_directory_rva;
-
-
-
+	// loading DLLs
+#if true
 	if (info_copy.original_import_directory_rva)
 	{
 		//Виртуальный адрес первого дескриптора
@@ -402,10 +406,14 @@ void __declspec(naked) unpacker_main()
 		}
 	}
 
+#endif // loading DLLs
 
 
+#endif // Fixing imports
 
 
+	// Fixing relocations
+#if true
 	//Если у файла были релокации
 	//и файл был перемещен загрузчиком
 	if (info_copy.original_relocation_directory_rva
@@ -444,9 +452,11 @@ void __declspec(naked) unpacker_main()
 			reloc = reinterpret_cast<const IMAGE_BASE_RELOCATION*>(reinterpret_cast<const char*>(reloc) + reloc->SizeOfBlock);
 		}
 	}
+#endif // Fixing relocations
 
 
-
+	// Fixing load config
+#if true
 	//Если файл имеет директорию конфигурации загрузки
 	if (info_copy.original_load_config_directory_rva)
 	{
@@ -477,7 +487,11 @@ void __declspec(naked) unpacker_main()
 		}
 	}
 
+#endif // Fixing load config
 
+
+	// Fixing TLS
+#if true
 
 	//Скопируем TLS-индекс
 	if (info_copy.original_tls_index_rva)
@@ -523,7 +537,7 @@ void __declspec(naked) unpacker_main()
 		}
 	}
 
-
+#endif // Fixing TLS
 
 
 
@@ -542,47 +556,4 @@ void __declspec(naked) unpacker_main()
 		jmp eax;
 	}
 
-#endif
-
-	// Test code
-#if TEST_
-	
-	//user32.dll
-	*reinterpret_cast<DWORD*>(&buf[0]) = 'resu';
-	*reinterpret_cast<DWORD*>(&buf[4]) = 'd.23';
-	*reinterpret_cast<DWORD*>(&buf[8]) = 'll';
-
-	//Загружаем библиотеку user32.dll
-	HMODULE user32_dll;
-	user32_dll = load_library_a(buf);
-
-	//Тайпдеф прототипа функции MessageBoxA
-	typedef int(__stdcall* message_box_a_func)(HWND owner, const char* text, const char* caption, DWORD type);
-
-	//MessageBoxA
-	*reinterpret_cast<DWORD*>(&buf[0]) = 'sseM';
-	*reinterpret_cast<DWORD*>(&buf[4]) = 'Bega';
-	*reinterpret_cast<DWORD*>(&buf[8]) = 'Axo';
-
-	//Получаем адрес функции MessageBoxA
-	message_box_a_func message_box_a;
-	message_box_a = reinterpret_cast<message_box_a_func>(get_proc_address(user32_dll, buf));
-
-	//Hello!
-	*reinterpret_cast<DWORD*>(&buf[0]) = 'lleH';
-	*reinterpret_cast<DWORD*>(&buf[4]) = '!!o';
-
-	//Выводим месадж бокс
-	message_box_a(0, buf, buf, MB_ICONINFORMATION);
-
-
-
-	_asm
-	{
-		leave;
-		ret;
-	}
-
-	
-#endif
 }

@@ -943,6 +943,13 @@ enum replaces_cor_hdr_numeric_defines
 	max_package_name                    =1024
 };
 
+struct image_load_config_code_integrity {
+	uint16_t Flags;          // Flags to indicate if CI information is available, etc.
+	uint16_t Catalog;        // 0xFFFF means not available
+	uint32_t CatalogOffset;
+	uint32_t Reserved;       // Additional bitmask to be defined later
+};
+
 /// Load Configuration Directory Entry ///
 struct image_load_config_directory32
 {
@@ -966,6 +973,28 @@ struct image_load_config_directory32
 	uint32_t SecurityCookie;             // VA
 	uint32_t SEHandlerTable;             // VA
 	uint32_t SEHandlerCount;
+	uint32_t GuardCFCheckFunctionPointer;    // VA
+	uint32_t GuardCFDispatchFunctionPointer; // VA
+	uint32_t GuardCFFunctionTable;           // VA
+	uint32_t GuardCFFunctionCount;
+	uint32_t GuardFlags;
+	image_load_config_code_integrity CodeIntegrity;
+	uint32_t GuardAddressTakenIatEntryTable; // VA
+	uint32_t GuardAddressTakenIatEntryCount;
+	uint32_t GuardLongJumpTargetTable;       // VA
+	uint32_t GuardLongJumpTargetCount;
+	uint32_t DynamicValueRelocTable;         // VA
+	uint32_t CHPEMetadataPointer;
+	uint32_t GuardRFFailureRoutine;          // VA
+	uint32_t GuardRFFailureRoutineFunctionPointer; // VA
+	uint32_t DynamicValueRelocTableOffset;
+	uint16_t DynamicValueRelocTableSection;
+	uint16_t Reserved2;
+	uint32_t GuardRFVerifyStackPointerFunctionPointer; // VA
+	uint32_t HotPatchTableOffset;
+	uint32_t Reserved3;
+	uint32_t EnclaveConfigurationPointer;    // VA
+	uint32_t VolatileMetadataPointer;        // VA
 };
 
 struct image_load_config_directory64
@@ -979,17 +1008,39 @@ struct image_load_config_directory64
 	uint32_t CriticalSectionDefaultTimeout;
 	uint64_t DeCommitFreeBlockThreshold;
 	uint64_t DeCommitTotalFreeThreshold;
-	uint64_t LockPrefixTable;         // VA
+	uint64_t LockPrefixTable;                // VA
 	uint64_t MaximumAllocationSize;
 	uint64_t VirtualMemoryThreshold;
 	uint64_t ProcessAffinityMask;
 	uint32_t ProcessHeapFlags;
 	uint16_t CSDVersion;
-	uint16_t Reserved1;
-	uint64_t EditList;                // VA
-	uint64_t SecurityCookie;          // VA
-	uint64_t SEHandlerTable;          // VA
+	uint16_t DependentLoadFlags;
+	uint64_t EditList;                       // VA
+	uint64_t SecurityCookie;                 // VA
+	uint64_t SEHandlerTable;                 // VA
 	uint64_t SEHandlerCount;
+	uint64_t GuardCFCheckFunctionPointer;    // VA
+	uint64_t GuardCFDispatchFunctionPointer; // VA
+	uint64_t GuardCFFunctionTable;           // VA
+	uint64_t GuardCFFunctionCount;
+	uint32_t GuardFlags;
+	image_load_config_code_integrity CodeIntegrity;
+	uint64_t GuardAddressTakenIatEntryTable; // VA
+	uint64_t GuardAddressTakenIatEntryCount;
+	uint64_t GuardLongJumpTargetTable;       // VA
+	uint64_t GuardLongJumpTargetCount;
+	uint64_t DynamicValueRelocTable;         // VA
+	uint64_t CHPEMetadataPointer;            // VA
+	uint64_t GuardRFFailureRoutine;          // VA
+	uint64_t GuardRFFailureRoutineFunctionPointer; // VA
+	uint32_t DynamicValueRelocTableOffset;
+	uint16_t DynamicValueRelocTableSection;
+	uint16_t Reserved2;
+	uint64_t GuardRFVerifyStackPointerFunctionPointer; // VA
+	uint32_t HotPatchTableOffset;
+	uint32_t Reserved3;
+	uint64_t EnclaveConfigurationPointer;     // VA
+	uint64_t VolatileMetadataPointer;         // VA
 };
 
 #pragma pack(pop)

@@ -19,6 +19,9 @@ size_t Align_up(size_t x, size_t align)
 
 bool PackPE(const std::experimental::filesystem::path& filePath)
 {
+
+	// File checking
+#if true
 	std::ifstream file(filePath, std::ios::in | std::ios::binary);
 	if (!file)
 	{
@@ -82,7 +85,11 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		return false;
 	}
 
+#endif // File checking
 
+
+	// Writing packed file info
+#if true
 	packed_file_info basic_info = { 0 };
 
 	basic_info.number_of_sections = sections.size();
@@ -115,10 +122,13 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	//оригинальной директории конфигурации загрузки упаковываемого файла
 	basic_info.original_load_config_directory_rva = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG);
 
+#endif // Writing packed file info
 
 
 
-
+	// Writing sections to the string 
+	// (packed_setions_info [section's_info[], raw section's data])
+#if true
 	std::string packed_sections_info;
 	{
 		packed_sections_info.resize(sections.size() * sizeof(packed_section));
@@ -164,13 +174,20 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 
 		packed_sections_info += raw_section_data;
 	}
+#endif // Writing sections to the string 
 
+
+	
 	pe_bliss::section new_section;
 
 	new_section.set_name(".rsrc");
 
 	new_section.readable(true).writeable(true).executable(true);
 
+	// Compressing data
+	// Adding too the begining of section file info:
+	// Section [file_info, compressed_data]
+#if true
 	std::string& out_buf = new_section.get_raw_data();
 
 	{
@@ -211,7 +228,13 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	}
 
 	std::cout << "Compressing succeed\n";
+#endif // Compressing data
 
+
+
+	// GET TLS
+	// "auto_ptr<tls_info> tls"
+#if true
 	//Если файл имеет TLS, получим информацию о нем
 	std::auto_ptr<pe_bliss::tls_info> tls;
 	if (image->has_tls())
@@ -219,7 +242,12 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		std::cout << "Reading TLS..." << std::endl;
 		tls.reset(new pe_bliss::tls_info(pe_bliss::get_tls_info(*image)));
 	}
+#endif // GET TLS
 
+
+	// GET EXPORTS (info and functions to export)
+	// "exported_functions_list exports", "export_info exports_info"
+#if true
 	//Если файл имеет экспорты, получим информацию о них
 	//и их список
 	pe_bliss::exported_functions_list exports;
@@ -229,42 +257,40 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		std::cout << "Reading exports..." << std::endl;
 		exports = pe_bliss::get_exported_functions(*image, exports_info);
 	}
+#endif // GET EXPORTS
 
-	//Если файл имеет Image Load Config, получим информацию о ней
+
+	// GET LOAD CONFIG
+	// "unique_ptr<image_config_info> load_config"
+#if true
+
 	std::unique_ptr<pe_bliss::image_config_info> load_config;
 	if (image->has_config())
 	{
+		std::cout << "Reading Image Load Config..." << std::endl;
+
 		try
 		{
-			pe_bliss::image_config_info* info_ptr = new pe_bliss::image_config_info(pe_bliss::get_image_config(*image));
-
-			load_config.reset(info_ptr);
+			load_config.reset(new pe_bliss::image_config_info(get_image_config(*image)));
 		}
 		catch (const pe_bliss::pe_exception& e)
 		{
-			std::cout << "No config in PE..." << std::endl;
+			image->remove_directory(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG);
+			std::cout << "Error reading load config directory: " << e.what() << std::endl;
 		}
 	}
-
-	//Удалим все часто используемые директории
-	//В дальнейшем мы будем их возвращать обратно
-	//и корректно обрабатывать, но пока так
-	//Оставим только импорты (и то, обрабатывать их пока не будем)
-	image->remove_directory(IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT);
-	image->remove_directory(IMAGE_DIRECTORY_ENTRY_IAT);
-	image->remove_directory(IMAGE_DIRECTORY_ENTRY_SECURITY);
-	image->remove_directory(IMAGE_DIRECTORY_ENTRY_DEBUG);
-
-	//Урезаем таблицу директорий, удаляя все нулевые
-	//Урезаем не полностью, а минимум до 12 элементов, так как в оригинальном
-	//файле могут присутствовать первые 12 и использоваться
-	//image->strip_data_directories(16 - 4);
-	//Удаляем стаб из заголовка, если какой-то был
-	image->strip_stub_overlay();
+	else
+	{
+		image->remove_directory(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG);
+	}
 
 
+#endif // GET LOAD CONFIG
 
 
+	// GET RESOURCES
+	// rewrite main resources (icon, manifest, version) to new resource dir
+#if true
 	//Новая пустая корневая директория ресурсов
 	pe_bliss::resource_directory new_root_dir;
 
@@ -366,12 +392,17 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		}
 	}
 
+#endif // GET RESOURCES
 
 
 
-
-
+	// Packed data section (resource section)
+#if true
 	{
+		// Replacing all sections with one 
+		// which we created earlier ("new_section")
+		// (section has total virtual size)
+#if true
 		const pe_bliss::section& first_section = image->get_image_sections().front();
 
 		new_section.set_virtual_address(first_section.get_virtual_address());
@@ -392,7 +423,13 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 
 		image->set_section_virtual_size(added_section, total_virtual_size);
 
+#endif // Replacing all sections with one
 
+
+		// Rebuilding imports
+		// only two functions : "LoadLibraryA", "GetProcAddress"
+		// addresses are in file_info
+#if true
 		std::cout << "Creating imports...\n";
 		pe_bliss::import_library kernel32;
 		kernel32.set_name("KERNEL32.dll");
@@ -433,12 +470,16 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 
 		pe_bliss::rebuild_imports(*image, imports, added_section, settings);
 
+#endif // Rebuilding imports
+
+
 		//Пересоберем ресурсы, если есть, что пересобирать
 		if (!new_root_dir.get_entry_list().empty())
 			pe_bliss::rebuild_resources(*image, new_root_dir, added_section, added_section.get_raw_data().size());
 		
-		
-
+		// Writing TLS data to file_info 
+		// (which is allready in new_section)
+#if true
 		//Если у файла был TLS
 		if (tls.get())
 		{
@@ -462,10 +503,21 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 			//структуры packed_file_info
 			tls->set_index_rva(image->rva_from_section_offset(added_section, offsetof(packed_file_info, tls_index)));
 		}
+#endif // Writing TLS data to file_info 
+	} 
+#endif // Packed data section
 
-	}
 
+
+	// Unpacker section
+#if true
 	{
+
+		// Adding unpacker section
+		// Writing data (from unpacker.h)
+		// replace some variables in data : 
+		// ("original_image_base", "rva_of_first_section", "original_image_base_no_fixup")
+#if true
 		DWORD first_callback_offset = 0;
 
 		pe_bliss::section unpacker_section;
@@ -496,6 +548,7 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 		//Добавляем и эту секцию
 		pe_bliss::section& unpacker_added_section = image->add_section(unpacker_section);
 
+#endif // Adding unpacker section 
 
 
 		//Изменим размер данных секции распаковщика ровно
@@ -511,98 +564,8 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 			unpacker_added_section.get_raw_data().resize(sizeof(unpacker_data));
 		}
 
-
-		//Выставляем новую точку входа - теперь она указывает
-		//на распаковщик, на самое его начало
-		image->set_ep(image->rva_from_section_offset(unpacker_added_section, 0) + unpacker_entry_point);
-	
-
-		//Если у файла есть релокации
-		if (image->has_reloc())
-		{
-			std::cout << "Creating relocations..." << std::endl;
-
-			//Создаем список таблиц релокаций и единственную таблицу
-			pe_bliss::relocation_table_list reloc_tables;
-			pe_bliss::relocation_table table;
-
-			pe_bliss::section& unpacker_section = image->get_image_sections().at(1);
-
-			//Устанавливаем виртуальный адрес таблицы релокаций
-			//Он будет равен относительному виртуальному адресу второй добавленной
-			//секции, так как именно в ней находится код распаковщика
-			//с переменной, которую мы будем фиксить
-			table.set_rva(unpacker_section.get_virtual_address());
-
-			//Добавляем релокацию по смещению original_image_base_offset из
-			//файла parameters.h распаковщика
-			table.add_relocation(pe_bliss::relocation_entry(original_image_base_offset, IMAGE_REL_BASED_HIGHLOW));
-
-
-
-			//Если у файла был TLS
-			if (tls.get())
-			{
-				//Просчитаем смещение к структуре TLS
-				//относительно начала второй секции
-				DWORD tls_directory_offset = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_TLS)
-					- image->section_from_directory(IMAGE_DIRECTORY_ENTRY_TLS).get_virtual_address();
-
-				//Добавим релокации для полей StartAddressOfRawData,
-				//EndAddressOfRawData и AddressOfIndex
-				//Эти поля у нас всегда ненулевые
-				table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, StartAddressOfRawData)), IMAGE_REL_BASED_HIGHLOW));
-				table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, EndAddressOfRawData)), IMAGE_REL_BASED_HIGHLOW));
-				table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, AddressOfIndex)), IMAGE_REL_BASED_HIGHLOW));
-
-				//Если имеются TLS-коллбэки
-				if (first_callback_offset)
-				{
-					//То добавим еще релокации для поля AddressOfCallBacks
-					//и для адреса нашего пустого коллбэка
-					table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, AddressOfCallBacks)), IMAGE_REL_BASED_HIGHLOW));
-					table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(first_callback_offset), IMAGE_REL_BASED_HIGHLOW));
-				}
-			}
-
-
-
-
-			//Добавляем таблицу в список таблиц
-			reloc_tables.push_back(table);
-
-			//Пересобираем релокации, располагая их в конце
-			//секции с кодом распаковщика
-			pe_bliss::rebuild_relocations(*image, reloc_tables, unpacker_section, unpacker_section.get_raw_data().size(), true, !image->has_exports() && !load_config.get());
-		}
-
-		if (image->has_exports())
-		{
-			std::cout << "Repacking exports..." << std::endl;
-
-			pe_bliss::section& unpacker_section = image->get_image_sections().at(1);
-
-			//Пересобираем экспорты и располагаем их в секции "kaimi.io"
-			pe_bliss::rebuild_exports(*image, exports_info, exports, unpacker_section, unpacker_section.get_raw_data().size(), true, !load_config.get());
-		}
-
-		if (load_config.get())
-		{
-			std::cout << "Repacking load configuration..." << std::endl;
-
-			pe_bliss::section& unpacker_section = image->get_image_sections().at(1);
-
-			//Очистим таблицу адресов LOCK-префиксов
-			load_config->clear_lock_prefix_list();
-			//Добавим единственный адрес нашего левого LOCK-префикса
-			load_config->add_lock_prefix_rva(image->rva_from_section_offset(image->get_image_sections().at(0), offsetof(packed_file_info, lock_opcode)));
-
-			//Пересобираем директорию конфигурации загрузки и располагаем ее в секции "kaimi.io"
-			//Пересобираем автоматически таблицу SE Handler'ов и LOCK-префиксов
-			pe_bliss::rebuild_image_config(*image, *load_config, unpacker_section, unpacker_section.get_raw_data().size(), true, true);
-		}
-
-
+		// Handling TLS
+#if true
 		//Если у файла есть TLS
 		if (tls.get())
 		{
@@ -664,7 +627,7 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 			//Указываем пересборщику, что не нужно писать данные и коллбэки
 			//Мы сделаем это вручную (коллбэки уже записали, куда надо)
 			//Также указываем, что не нужно обрезать нулевые байты в конце секции
-			pe_bliss::rebuild_tls(*image,*tls, unpacker_added_section, directory_pos, false, false, pe_bliss::tls_data_expand_raw, true, false);
+			pe_bliss::rebuild_tls(*image, *tls, unpacker_added_section, directory_pos, false, false, pe_bliss::tls_data_expand_raw, true, false);
 
 			//Дополняем секцию данными для инициализации
 			//локальной памяти потока
@@ -687,21 +650,169 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 				if (i != unpacker_added_section_data.size())
 					unpacker_added_section_data.erase(i + 1);
 			}
+
+
 			//и пересчитаем ее размеры (физический и виртуальный)
 			image->prepare_section(unpacker_added_section);
 		}
+#endif // Handling TLS
 
+
+		//Выставляем новую точку входа - теперь она указывает
+		//на распаковщик, на самое его начало
+		image->set_ep(image->rva_from_section_offset(unpacker_added_section, 0) + unpacker_entry_point);
+	
+		// Handling config 
+#if true
+		if (load_config.get())
+		{
+			std::cout << "Repacking load configuration..." << std::endl;
+
+			pe_bliss::section& unpacker_section = image->get_image_sections().at(1);
+
+			//Очистим таблицу адресов LOCK-префиксов
+			load_config->clear_lock_prefix_list();
+			//Добавим единственный адрес нашего левого LOCK-префикса
+			load_config->add_lock_prefix_rva(image->rva_from_section_offset(image->get_image_sections().at(0), offsetof(packed_file_info, lock_opcode)));
+
+			//Пересобираем директорию конфигурации загрузки и располагаем ее в секции "kaimi.io"
+			//Пересобираем автоматически таблицу SE Handler'ов и LOCK-префиксов
+			pe_bliss::rebuild_image_config(*image, *load_config, unpacker_section, unpacker_section.get_raw_data().size(), true, true);
+		}
+#endif
+
+		// Handling relocations
+		// Adding to relocations original_image_base, which is in unpacker
+		// Adding TLS functions
+#if true
+		//Если у файла есть релокации
+		if (image->has_reloc())
+		{
+			std::cout << "Creating relocations..." << std::endl;
+
+			//Создаем список таблиц релокаций и единственную таблицу
+			pe_bliss::relocation_table_list reloc_tables;
+
+			pe_bliss::section& unpacker_section = image->get_image_sections().at(1);
+
+
+			{
+				pe_bliss::relocation_table table;
+				//Устанавливаем виртуальный адрес таблицы релокаций
+				//Он будет равен относительному виртуальному адресу второй добавленной
+				//секции, так как именно в ней находится код распаковщика
+				//с переменной, которую мы будем фиксить
+				table.set_rva(unpacker_section.get_virtual_address());
+
+				//Добавляем релокацию по смещению original_image_base_offset из
+				//файла parameters.h распаковщика
+				table.add_relocation(pe_bliss::relocation_entry(original_image_base_offset, IMAGE_REL_BASED_HIGHLOW));
+			}
+
+
+			//Если у файла был TLS
+			if (tls.get())
+			{
+				//Просчитаем смещение к структуре TLS
+				//относительно начала второй секции
+				DWORD tls_directory_offset = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_TLS)
+					- image->section_from_directory(IMAGE_DIRECTORY_ENTRY_TLS).get_virtual_address();
+
+				//Создаем новую таблицу релокации, так как область с таблицей TLS может быть сильно удалена
+				//от original_image_base_offset
+				pe_bliss::relocation_table table;
+				table.set_rva(image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_TLS));
+
+				//Добавим релокации для полей StartAddressOfRawData,
+				//EndAddressOfRawData и AddressOfIndex
+				//Эти поля у нас всегда ненулевые
+				table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, StartAddressOfRawData)), IMAGE_REL_BASED_HIGHLOW));
+				table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, EndAddressOfRawData)), IMAGE_REL_BASED_HIGHLOW));
+				table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, AddressOfIndex)), IMAGE_REL_BASED_HIGHLOW));
+
+				//Если имеются TLS-коллбэки
+				if (first_callback_offset)
+				{
+					//То добавим еще релокации для поля AddressOfCallBacks
+					//и для адреса нашего пустого коллбэка
+					table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(tls_directory_offset + offsetof(IMAGE_TLS_DIRECTORY32, AddressOfCallBacks)), IMAGE_REL_BASED_HIGHLOW));
+					table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(first_callback_offset), IMAGE_REL_BASED_HIGHLOW));
+				}
+
+				//Добавляем таблицу в список таблиц
+				reloc_tables.push_back(table);
+			}
+
+			if (load_config.get())
+			{
+				//Если файл имеет IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG, то следует добавить необходимые релокации для нее,
+				//потому что она используется загрузчиком на этапе загрузки PE-файла
+				DWORD config_directory_offset = image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG)
+					- image->section_from_directory(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG).get_virtual_address();
+
+				//Создаем новую таблицу релокации, так как область с таблицей TLS может быть сильно удалена
+				//от original_image_base_offset или TLS
+				pe_bliss::relocation_table table;
+				table.set_rva(image->get_directory_rva(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG));
+
+				if (load_config->get_security_cookie_va())
+					table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(offsetof(IMAGE_LOAD_CONFIG_DIRECTORY32, SecurityCookie)), IMAGE_REL_BASED_HIGHLOW));
+
+				if (load_config->get_se_handler_table_va())
+					table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(offsetof(IMAGE_LOAD_CONFIG_DIRECTORY32, SEHandlerTable)), IMAGE_REL_BASED_HIGHLOW));
+
+				table.add_relocation(pe_bliss::relocation_entry(static_cast<WORD>(offsetof(IMAGE_LOAD_CONFIG_DIRECTORY32, LockPrefixTable)), IMAGE_REL_BASED_HIGHLOW));
+				reloc_tables.push_back(table);
+			}
+
+
+			
+
+			//Пересобираем релокации, располагая их в конце
+			//секции с кодом распаковщика
+			pe_bliss::rebuild_relocations(*image, reloc_tables, unpacker_section, unpacker_section.get_raw_data().size(), true, !image->has_exports() && !load_config.get());
+		}
+
+#endif // Handling relocations
+
+
+		// Handling exports 
+#if true
+		if (image->has_exports())
+		{
+			std::cout << "Repacking exports..." << std::endl;
+
+			pe_bliss::section& unpacker_section = image->get_image_sections().at(1);
+
+			//Пересобираем экспорты и располагаем их в секции "kaimi.io"
+			pe_bliss::rebuild_exports(*image, exports_info, exports, unpacker_section, unpacker_section.get_raw_data().size(), true, !load_config.get());
+		}
+
+		
+#endif // Handling exports and config
 
 	}
+#endif // Unpacker section
 
 
+	// Removing some directories (Bound import, IAT, Security, Debug)
+#if true
+	//Удалим все часто используемые директории
+	//В дальнейшем мы будем их возвращать обратно
+	//и корректно обрабатывать, но пока так
+	//Оставим только импорты (и то, обрабатывать их пока не будем)
+	image->remove_directory(IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT);
+	image->remove_directory(IMAGE_DIRECTORY_ENTRY_IAT);
+	image->remove_directory(IMAGE_DIRECTORY_ENTRY_SECURITY);
+	image->remove_directory(IMAGE_DIRECTORY_ENTRY_DEBUG);
+
+	//Удаляем стаб из заголовка, если какой-то был
+	image->strip_stub_overlay();
+#endif // Removing some directories
 
 
-
-
-
-
-
+	// Writing to file
+#if true
 
 	std::experimental::filesystem::path new_file_path = filePath;
 
@@ -724,6 +835,8 @@ bool PackPE(const std::experimental::filesystem::path& filePath)
 	pe_bliss::rebuild_pe(*image, new_pe_file, false, false);
 
 	std::cout << "File packed in \"" << new_file_path.filename().string() << '\"' << std::endl;
+
+#endif // Writing to file
 
 	return true;
 }
